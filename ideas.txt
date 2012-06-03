@@ -1,0 +1,54 @@
+Ideas for the libhelper
+
+Buffers
+
+ALLOCATE(name) // a macro with cast and malloc etc.
+allocate_buffer(len)
+automatic buffer (readpos, readlen)
+
+File operations
+
+get_file_length(path);
+read_file(path, buffer, length);
+write_file(path, data, length)
+
+Directory operations
+
+see what we did for dirlib
+
+Network
+
+open_udp_client_socket
+open_udp_server_socket
+open_tcp_client_socket(peer_hostname,peer_port)
+open_tcp_server_socket(bind_ip, bind_port)
+get_host_ip(hostname)
+send_packet(socket, data, len)
+send_request(socket, data, len, rxbuf, rxlen);
+receive_request(socket, checking_function);
+
+Image files
+
+write_png24(data, width, height, stride, path)
+write_jpeg(data, width, height, stride, path)
+read_png(&data, &width, &height, &stride, format*, path);
+
+SDL
+
+create_surface32(width, height)
+flip_serface
+draw_line
+draw_circle
+fill_flood(surface,x,y)
+
+Archive files
+
+read_gzip(&data, &len, path)
+read_archive(&data, &len, path) - determines format automatically
+write_gzip(data, len, path)
+
+strings, Regexp
+
+split, join, match
+
+
