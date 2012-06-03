@@ -77,19 +77,10 @@ memset(baz, 0, sizeof(int)*N);
 #define GRANSIZE(num,gran) ((num)+GRANREST(num,gran))
 
 
-// allocate array with 'num' elements of 'type' with granularity 1. Place the pointer to 'name' and number to 'nname'
-#define ARRAY_ALLOC(type,name,nname,num) ARRAY_ALLOCG(type,name,nname,num,1)
-
-#define BUFFER_ALLOC(name,nname,size) ARRAY_ALLOC(unsigned char,name,nname,size)
-
-
-// allocate array with granularity 'gran'
+// allocate array with 'num' elements of 'type'. Place the pointer to 'name' and number to 'nname'
 #define ARRAY_ALLOCG(type,name,nname,num,gran)                          \
     ALLOCNE(type,name,GRANSIZE(num,gran));                              \
     nname = num;
-
-#define BUFFER_ALLOCG(name,nname,size,gran) ARRAY_ALLOCG(unsigned char,name,nname,size,gran)
-
 
 // extend the allocated array 'name' with currently 'nname' elements to 'num'
 #define ARRAY_EXTENDG(type,name,nname,num,gran)                         \
@@ -97,10 +88,18 @@ memset(baz, 0, sizeof(int)*N);
         name = (type *)realloc(name,GRANSIZE(num,gran)*sizeof(type));   \
     nname = num;
 
-#define BUFFER_EXTENDG(name,nname,size,gran) ARRAY_EXTENDG(unsigned char,name,nname,size,gran)
-
-
 // add a number of 
 #define ARRAY_ADDG(type,name,nname,num,gran) ARRAY_EXTENDG(type,name,nname,nname+num,gran)
 
-#define BUFFER_ADDG(name,nname,size,gran) ARRAY_ADDG(unsigned char,name,nname,size,gran)
+
+#define ARRAY_ALLOC(type,name,nname,num)     ARRAY_ALLOCG(type,name,nname,num,1)
+#define ARRAY_EXTEND(type,name,nname,num)    ARRAY_EXTENDG(type,name,nname,num,1)
+#define ARRAY_ADDG(type,name,nname,num)      ARRAY_ADDG(type,name,nname,num,1)
+
+#define BUFFER_ALLOCG(name,nname,size,gran)  ARRAY_ALLOCG(unsigned char,name,nname,size,gran)
+#define BUFFER_EXTENDG(name,nname,size,gran) ARRAY_EXTENDG(unsigned char,name,nname,size,gran)
+#define BUFFER_ADDG(name,nname,size,gran)    ARRAY_ADDG(unsigned char,name,nname,size,gran)
+
+#define BUFFER_ALLOC(name,nname,size)        BUFFER_ALLOCG(name,nname,size,1)
+#define BUFFER_EXTEND(name,nname,size,gran)  BUFFER_EXTENDG(name,nname,size,1)
+#define BUFFER_ADD(name,nname,size,gran)     BUFFER_ADDG(name,nname,size,gran,1)
