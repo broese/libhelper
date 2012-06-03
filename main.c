@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "lh_buffers.h"
+#include "lh_files.h"
 
 typedef struct {
     float x, y, z;
@@ -25,7 +26,9 @@ typedef struct {
 #define ALLOC_GRAN 4
 #define BUF_GRAN   64
 
-int main(int ac, char **av) {
+////////////////////////////////////////////////////////////////////////////////
+
+void test_buffers() {
 #if 0
     ALLOC(model,m);
     ARRAY_ALLOCG(vertex,m->v,m->nv,100,ALLOC_GRAN);
@@ -82,6 +85,18 @@ int main(int ac, char **av) {
 
     printf("Total length: %d\n%s\n",n-1,str);
 #endif
+}
+
+void test_files() {
+    FILE f;
+    printf("Size: %ld\n", get_file_length("Makefilse"));
+    printf("Size: %ld\n", get_file_length_f(&f));
+}
+
+int main(int ac, char **av) {
+
+    //test_buffers();
+    test_files();
 
     return 0;
 }

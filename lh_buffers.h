@@ -94,7 +94,7 @@ memset(baz, 0, sizeof(int)*N);
 
 #define ARRAY_ALLOC(type,name,nname,num)     ARRAY_ALLOCG(type,name,nname,num,1)
 #define ARRAY_EXTEND(type,name,nname,num)    ARRAY_EXTENDG(type,name,nname,num,1)
-#define ARRAY_ADDG(type,name,nname,num)      ARRAY_ADDG(type,name,nname,num,1)
+#define ARRAY_ADD(type,name,nname,num)       ARRAY_ADDG(type,name,nname,num,1)
 
 #define BUFFER_ALLOCG(name,nname,size,gran)  ARRAY_ALLOCG(unsigned char,name,nname,size,gran)
 #define BUFFER_EXTENDG(name,nname,size,gran) ARRAY_EXTENDG(unsigned char,name,nname,size,gran)
