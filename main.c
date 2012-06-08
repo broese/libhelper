@@ -88,9 +88,11 @@ void test_buffers() {
 }
 
 void test_files() {
-    FILE f;
-    printf("Size: %ld\n", get_file_length("Makefilse"));
-    printf("Size: %ld\n", get_file_length_f(&f));
+    ssize_t size;
+    FILE *m = open_file_r("Makefile",&size);
+    unsigned char * data = read_froma(m,34,55);
+    hexdump(data+3, 55);
+    free(data);
 }
 
 int main(int ac, char **av) {
