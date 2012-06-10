@@ -5,6 +5,7 @@
 
 #include "lh_buffers.h"
 #include "lh_files.h"
+#include "lh_compress.h"
 
 typedef struct {
     float x, y, z;
@@ -95,10 +96,70 @@ void test_files() {
     free(data);
 }
 
+void test_compression() {
+
+#if 0
+    ssize_t ilen;
+    char * idata = 
+        "This is a test string to be compressed. "
+        "We will try compression methods gzip and zlib and store the output to a file, "
+        "then load the data again and try to decode it.";
+    ilen = strlen(idata)+1;
+#else
+    ssize_t ilen;
+    char * idata = read_file("test.txt", &ilen);
+#endif
+    
+
+    
+    ssize_t olen;
+    unsigned char * comp = gzip_encode(idata, ilen, &olen);
+    if (!comp) {
+        printf("test_compression failed\n");
+        exit(1);
+    }
+
+    printf("Compressed idata to %d bytes\n",olen);
+
+    hexdump(comp,olen);
+    write_file("compressed.gz", comp, olen);
+
+    ssize_t dlen;
+    unsigned char * plain = gzip_decode(comp, olen, &dlen);
+    if (!plain) {
+        printf("test_decompression failed\n");
+        exit(1);
+    }
+
+    printf("Decompressed to %d bytes\n",dlen);
+    hexdump(plain,dlen);
+
+
+    free(comp);
+}
+
+void test_compression2() {
+    ssize_t gsize;
+    unsigned char * gzip = read_file("test.gz",&gsize);
+    hexdump(gzip,gsize);
+
+    ssize_t psize;
+    unsigned char * plain = zlib_decode(gzip, gsize, &psize);
+    if (!plain) {
+        printf("test_decompression failed\n");
+        exit(1);
+    }
+    printf("Decompressed to %d bytes\n",psize);
+    hexdump(plain,psize);
+
+    free(gzip);
+}
+
 int main(int ac, char **av) {
 
     //test_buffers();
-    test_files();
+    //test_files();
+    test_compression();
 
     return 0;
 }

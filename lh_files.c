@@ -1,5 +1,6 @@
 #include "lh_files.h"
 #include "lh_buffers.h"
+#include "lh_debug.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

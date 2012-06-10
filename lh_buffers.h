@@ -1,5 +1,11 @@
 #pragma once
 
+#include <string.h>
+
+/*
+lh_buffers - macros for handling buffers and arrays
+*/
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /* allocation macros
@@ -76,7 +82,6 @@ memset(baz, 0, sizeof(int)*N);
 #define GRANREST(num,gran) ((gran)-((unsigned)num))%(gran)
 #define GRANSIZE(num,gran) ((num)+GRANREST(num,gran))
 
-
 // allocate array with 'num' elements of 'type'. Place the pointer to 'name' and number to 'nname'
 #define ARRAY_ALLOCG(type,name,nname,num,gran)                          \
     ALLOCNE(type,name,GRANSIZE(num,gran));                              \
@@ -101,5 +106,5 @@ memset(baz, 0, sizeof(int)*N);
 #define BUFFER_ADDG(name,nname,size,gran)    ARRAY_ADDG(unsigned char,name,nname,size,gran)
 
 #define BUFFER_ALLOC(name,nname,size)        BUFFER_ALLOCG(name,nname,size,1)
-#define BUFFER_EXTEND(name,nname,size,gran)  BUFFER_EXTENDG(name,nname,size,1)
-#define BUFFER_ADD(name,nname,size,gran)     BUFFER_ADDG(name,nname,size,gran,1)
+#define BUFFER_EXTEND(name,nname,size)       BUFFER_EXTENDG(name,nname,size,1)
+#define BUFFER_ADD(name,nname,size)          BUFFER_ADDG(name,nname,size,1)
