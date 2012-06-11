@@ -178,13 +178,35 @@ void test_image2() {
     printf("Exported size : %zd\n",osize);
 }
 
+void test_stream() {
+    char *buf = "This is a test stream with some shit in it";
+    char *p = buf;
+
+    hexdump(buf, strlen(buf));
+
+#if 0
+    int8_t  a = parse_char(p);
+    int16_t b = parse_short(p);
+    int32_t c = parse_int(p);
+    int64_t d = parse_long(p);
+#else
+    int8_t  a = read_char_le(p);
+    int16_t b = read_short_le(p);
+    int32_t c = read_int_le(p);
+    int64_t d = read_long_le(p);
+#endif
+
+    printf("a=%d(%02x) b=%d(%04x) c=%d(%08x) d=%lld(%016llx) p=%08x buf=%08x\n",
+           a,a,b,b,c,c,d,d,(int)p,(int)buf);
+}
+
 int main(int ac, char **av) {
 
     //test_buffers();
     //test_files();
     //test_compression();
-
-    test_image2();
+    //test_image2();
+    test_stream();
 
     return 0;
 }
