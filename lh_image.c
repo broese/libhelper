@@ -14,7 +14,6 @@ lhimage * allocate_image(int width, int height) {
     ALLOC(lhimage,img);
     img->width = width;
     img->height = height;
-    img->png_transform = PNG_TRANSFORM_INVERT_ALPHA|PNG_TRANSFORM_BGR;
     ALLOCNE(uint32_t,img->data,width*height);
     return img;
 }
@@ -23,7 +22,6 @@ lhimage * attach_image(int width, int height, uint32_t *data) {
     ALLOC(lhimage,img);
     img->width = width;
     img->height = height;
-    img->png_transform = PNG_TRANSFORM_INVERT_ALPHA|PNG_TRANSFORM_BGR;
     img->data = data;
     return img;
 }
@@ -44,6 +42,10 @@ typedef struct {
 } pngbuf;
 
 #define PNGGRAN 1024
+
+#define PNGTRANS_DEFAULT_EXPORT (PNG_TRANSFORM_INVERT_ALPHA|PNG_TRANSFORM_BGR)
+#define PNGTRANS_RGBA_IMPORT    PNGTRANS_DEFAULT_EXPORT
+#define PNGTRANS_RGB_IMPORT     
 
 static void pngio_read(png_structp png, png_bytep data, png_size_t length) {
     pngbuf * buf = (pngbuf *) png_get_io_ptr(png);
@@ -132,7 +134,7 @@ unsigned char * export_png(lhimage *img, ssize_t *osize) {
         png_destroy_write_struct(&png, &pngi);
         LH_ERROR(NULL,"png_write_png failed");
     }
-    png_write_png(png, pngi, img->png_transform, NULL);
+    png_write_png(png, pngi, PNGTRANS_DEFAULT_EXPORT, NULL);
 
     free(rows);
     png_destroy_write_struct(&png, &pngi);
@@ -208,6 +210,22 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
 
     printf("W:%d H:%d C:%d D:%d\n",width, height, color_type, bit_depth);
 
+    switch (color_type) {
+        case PNG_COLOR_TYPE_PALETTE:
+            png_set_palette_to_rgb(png);
+            //FIXME: -> RGBA
+            break;
+        case PNG_COLOR_TYPE_GRAY:
+            if (bit_depth < 8) {
+                png_set_gray_1_2_4_to_8(png);
+            }
+            //FIXME: else?
+            break;
+        case PNG_COLOR_TYPE_RGB:
+            png_set_filler(png, 0x00, PNG_FILLER_AFTER);
+            break;
+    }
+
 
     //FIXME: libpng bug?
     buffer.offset -= 8;
@@ -232,7 +250,7 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
         LH_ERROR(NULL,"png_read_png failed");
     }
     //png_read_png(png, pngi, 0, NULL);
-    png_read_png(png, pngi, img->png_transform, NULL);
+    png_read_png(png, pngi, PNGTRANS_DEFAULT_EXPORT, NULL);
 
     free(rows);
     png_destroy_read_struct(&png, &pngi, &pnge);

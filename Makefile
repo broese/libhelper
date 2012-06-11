@@ -2,10 +2,16 @@ CC=gcc
 CFLAGS=-g -pg
 LIBS=-lz -lpng
 DEFS=
+AR=gar
 
-all: test
+LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o
 
-test: main.o lh_files.o lh_debug.o lh_compress.o lh_image.o
+all: test libhelper.a
+
+libhelper.a: $(LIBOBJ)
+	$(AR) rcs $@ $^
+
+test: main.o $(LIBOBJ)
 	$(CC) -o $@ $^ $(LIBS)
 
 .c.o:

@@ -43,10 +43,12 @@ static unsigned char * zlib_encode_internal
     zs.avail_out = *olength;
 
     do {
+#if 0
         printf("IN : %08p %d\n"
                "OUT: %08p %d\n",
                zs.next_in, zs.avail_in,
                zs.next_out, zs.avail_out);
+#endif
                
         result = deflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
         if (result == Z_STREAM_ERROR) {
@@ -101,6 +103,7 @@ static unsigned char * zlib_decode_internal
 
     do {
         result = inflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
+#if 0
         printf("\n"
                "result = %d\n"
                "IN : %08p %d\n"
@@ -108,6 +111,7 @@ static unsigned char * zlib_decode_internal
                result,
                zs.next_in, zs.avail_in,
                zs.next_out, zs.avail_out);
+#endif
                
         if (result == Z_STREAM_ERROR) {
             free(odata);

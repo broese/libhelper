@@ -17,7 +17,6 @@ typedef struct {
     int width;
     int height;
     uint32_t *data;
-    int png_transform;
 } lhimage;
 
 ////////////////////////////////////////////////////////////////////////////////
