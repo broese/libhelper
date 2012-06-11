@@ -6,6 +6,7 @@
 #include "lh_buffers.h"
 #include "lh_files.h"
 #include "lh_compress.h"
+#include "lh_image.h"
 
 typedef struct {
     float x, y, z;
@@ -155,11 +156,35 @@ void test_compression2() {
     free(gzip);
 }
 
+void test_image() {
+    lhimage *img = allocate_image(80,80);
+    int i;
+    for(i=0; i<img->height*img->width; i++)
+        img->data[i] = 0x00ffff00;
+
+    ssize_t osize = export_png_file(img, "test.png");
+    printf("Exported size : %zd\n",osize);
+}
+
+void test_image2() {
+    lhimage *img = import_png_file("input.png");
+    printf("Imported a %dx%d image\n",img->width,img->height);
+
+    int i;
+    for(i=0; i<img->height*img->width; i++)
+        img->data[i] ^= 0x00ffffff;
+
+    ssize_t osize = export_png_file(img, "output.png");
+    printf("Exported size : %zd\n",osize);
+}
+
 int main(int ac, char **av) {
 
     //test_buffers();
     //test_files();
-    test_compression();
+    //test_compression();
+
+    test_image2();
 
     return 0;
 }
