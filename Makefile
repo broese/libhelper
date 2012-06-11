@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -pg
 LIBS=-lz -lpng
 DEFS=
-AR=gar
+AR=ar
 
 LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o
 

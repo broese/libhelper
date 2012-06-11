@@ -177,15 +177,6 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
         LH_ERROR(NULL,"png_create_info_struct failed\n");
     }
 
-#if 0
-    pnge = png_create_info_struct(png);
-    if (!pnge) {
-        png_destroy_read_struct(&png, &pngi, &pnge);
-        LH_ERROR(NULL,"png_create_info_struct failed\n");
-    }
-#endif
-
-
     // set our custom read function
     buffer.buffer = data;
     buffer.size   = length;
@@ -214,12 +205,6 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
         case PNG_COLOR_TYPE_PALETTE:
             png_set_palette_to_rgb(png);
             //FIXME: -> RGBA
-            break;
-        case PNG_COLOR_TYPE_GRAY:
-            if (bit_depth < 8) {
-                png_set_gray_1_2_4_to_8(png);
-            }
-            //FIXME: else?
             break;
         case PNG_COLOR_TYPE_RGB:
             png_set_filler(png, 0x00, PNG_FILLER_AFTER);
