@@ -177,10 +177,10 @@ static inline int64_t parse_long(const char *p) {
     return temp.val;
 }
 
-#define read_char(p)  parse_char(p);  p++
-#define read_short(p) parse_short(p); p+=2
-#define read_int(p)   parse_int(p);   p+=4
-#define read_long(p)  parse_long(p);  p+=8
+#define read_char(p)  parse_char(p);  (p)++
+#define read_short(p) parse_short(p); (p)+=2
+#define read_int(p)   parse_int(p);   (p)+=4
+#define read_long(p)  parse_long(p);  (p)+=8
 
 // Little-Endian extraction (aka Intel order)
 
@@ -240,9 +240,38 @@ static inline int64_t parse_long_le(const char *p) {
     return temp.val;
 }
 
-#define read_char_le(p)  parse_char(p);     p++
-#define read_short_le(p) parse_short_le(p); p+=2
-#define read_int_le(p)   parse_int_le(p);   p+=4
-#define read_long_le(p)  parse_long_le(p);  p+=8
+#define read_char_le(p)  parse_char(p);     (p)++
+#define read_short_le(p) parse_short_le(p); (p)+=2
+#define read_int_le(p)   parse_int_le(p);   (p)+=4
+#define read_long_le(p)  parse_long_le(p);  (p)+=8
 
 ////////////////////////////////////////////////////////////////////////////////
+
+static inline float parse_float(const char *p) {
+    union {
+        char buf[4];
+        float val;
+    } temp;
+
+    unsigned char *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+    return temp.val;
+}
+
+static inline double parse_double(const char *p) {
+    union {
+        char buf[8];
+        double val;
+    } temp;
+
+    unsigned char *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+    return temp.val;
+}
+
+#define read_float(p)   parse_float(p);   p+=4
+#define read_double(p)  parse_double(p);  p+=8
