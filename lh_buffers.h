@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string.h>
+#include <stdint.h>
 
 /*
 lh_buffers - macros for handling buffers and arrays
