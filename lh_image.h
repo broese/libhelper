@@ -31,3 +31,6 @@ ssize_t export_png_file(lhimage *img, const char *path);
 lhimage * import_png(unsigned char *data, ssize_t length);
 lhimage * import_png_file(const char *path);
 
+////////////////////////////////////////////////////////////////////////////////
+
+#define IMGDOT(img,x,y) img->data[(x)+img->width*(y)]
