@@ -7,6 +7,7 @@
 #include "lh_files.h"
 #include "lh_compress.h"
 #include "lh_image.h"
+#include "lh_net.h"
 
 typedef struct {
     float x, y, z;
@@ -200,13 +201,20 @@ void test_stream() {
            a,a,b,b,c,c,d,d,(int)p,(int)buf);
 }
 
+void test_server() {
+    int ss = sock_server_ipv4_tcp_any(23456);
+    if (ss >= 0) sleep(1000);
+}
+
 int main(int ac, char **av) {
 
     //test_buffers();
     //test_files();
     //test_compression();
     //test_image2();
-    test_stream();
+    //test_stream();
+
+    test_server();
 
     return 0;
 }

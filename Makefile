@@ -1,10 +1,10 @@
 CC=gcc
 CFLAGS=-g -pg
-LIBS=-lz -lpng
+LIBS=-lz -lpng -lsocket -lnsl
 DEFS=
 AR=ar
 
-LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o
+LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o lh_net.o
 
 all: test libhelper.a
 

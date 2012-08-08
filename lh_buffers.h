@@ -93,6 +93,7 @@ memset(baz, 0, sizeof(int)*N);
     if (GRANSIZE(num,gran) > GRANSIZE(nname,gran))                      \
         name = (type *)realloc(name,GRANSIZE(num,gran)*sizeof(type));   \
     nname = num;
+//FIXME: clear the added range
 
 // add a number of 
 #define ARRAY_ADDG(type,name,nname,num,gran) ARRAY_EXTENDG(type,name,nname,nname+num,gran)
