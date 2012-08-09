@@ -90,10 +90,16 @@ memset(baz, 0, sizeof(int)*N);
 
 // extend the allocated array 'name' with currently 'nname' elements to 'num'
 #define ARRAY_EXTENDG(type,name,nname,num,gran)                         \
-    if (GRANSIZE(num,gran) > GRANSIZE(nname,gran))                      \
+    if (GRANSIZE(num,gran) > GRANSIZE(nname,gran)) {                    \
         name = (type *)realloc(name,GRANSIZE(num,gran)*sizeof(type));   \
+    }                                                                   \
     nname = num;
 //FIXME: clear the added range
+
+
+//printf("GRANSIZE(%d,%d) = %d  GRANSIZE(%d,%d) = %d\n",num,gran,GRANSIZE(num,gran),nname,gran,GRANSIZE(nname,gran)); \
+//printf("Extending array to %d, new pointer = %08x\n",GRANSIZE(num,gran),name); \
+//if (!name) LH_ERROR(1,"Failed to realloc");                           \
 
 // add a number of 
 #define ARRAY_ADDG(type,name,nname,num,gran) ARRAY_EXTENDG(type,name,nname,nname+num,gran)
