@@ -180,6 +180,8 @@ void test_image2() {
 }
 
 void test_stream() {
+
+#if 0
     char *buf = "This is a test stream with some shit in it";
     char *p = buf;
 
@@ -199,6 +201,27 @@ void test_stream() {
 
     printf("a=%d(%02x) b=%d(%04x) c=%d(%08x) d=%lld(%016llx) p=%08x buf=%08x\n",
            a,a,b,b,c,c,d,d,(int)p,(int)buf);
+#endif
+
+    union {
+        double d;
+        float f;
+        uint8_t b[8];
+    } n;
+
+    n.f = 3.3;
+    hexdump(n.b, 8);
+    float f = parse_float(n.b);
+
+    n.d = 3.3;
+    hexdump(n.b, 8);
+    double d = parse_double(n.b);
+
+    char *s = "\xC0\xB1\x4B\x4F\x89\x69\x79\x9E";
+    double x = parse_double(s);
+    hexdump(s, 8);
+    printf("%f %f %f\n",f,d,x);
+
 }
 
 void test_server() {
@@ -212,9 +235,9 @@ int main(int ac, char **av) {
     //test_files();
     //test_compression();
     //test_image2();
-    //test_stream();
+    test_stream();
 
-    test_server();
+    //test_server();
 
     return 0;
 }

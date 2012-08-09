@@ -255,9 +255,15 @@ static inline float parse_float(const char *p) {
         float val;
     } temp;
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned char *t = &temp.buf[3];
+    PUTR; PUTR;
+    PUTR; PUTR;
+#else
     unsigned char *t = &temp.buf[0];
     PUTF; PUTF;
     PUTF; PUTF;
+#endif
     return temp.val;
 }
 
@@ -267,13 +273,67 @@ static inline double parse_double(const char *p) {
         double val;
     } temp;
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned char *t = &temp.buf[7];
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+#else
     unsigned char *t = &temp.buf[0];
     PUTF; PUTF;
     PUTF; PUTF;
     PUTF; PUTF;
     PUTF; PUTF;
+#endif
     return temp.val;
 }
 
 #define read_float(p)   parse_float(p);   p+=4
 #define read_double(p)  parse_double(p);  p+=8
+
+////////////////////////////////////////////////////////////////////////////////
+
+static inline float parse_float_le(const char *p) {
+    union {
+        char buf[4];
+        float val;
+    } temp;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned char *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+#else
+    unsigned char *t = &temp.buf[3];
+    PUTR; PUTR;
+    PUTR; PUTR;
+#endif
+    return temp.val;
+}
+
+static inline double parse_double_le(const char *p) {
+    union {
+        char buf[8];
+        double val;
+    } temp;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned char *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+#else
+    unsigned char *t = &temp.buf[7];
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+#endif
+    return temp.val;
+}
+
+#define read_float_le(p)   parse_float_le(p);   p+=4
+#define read_double_le(p)  parse_double_le(p);  p+=8
+
