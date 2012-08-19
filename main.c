@@ -8,6 +8,7 @@
 #include "lh_compress.h"
 #include "lh_image.h"
 #include "lh_net.h"
+#include "lh_event.h"
 
 typedef struct {
     float x, y, z;
@@ -229,15 +230,77 @@ void test_server() {
     if (ss >= 0) sleep(1000);
 }
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+void test_event() {
+    int ss = sock_server_ipv4_tcp_any(23456);
+    if (ss<0) return;
+
+    pollarray pa;
+    CLEAR(pa);
+
+    pollgroup sg;
+    CLEAR(sg);
+
+    pollarray_add(&pa, &sg, ss, MODE_RW, NULL);
+
+    int stay = 1, i;
+    while(stay) {
+        evfile_poll(&pa, 100);
+        
+    }
+
+
+
+
+
+#if 0
+    pollblock_fd server;
+    CLEAR(server);
+    pollblock_add_fd(&server, ss);
+
+    pollblock_file clients;
+    CLEAR(clients);
+
+    int stay = 1, i;
+    while(stay) {
+        pollblock_poll_fd(&server, 100);
+        //if (server.nr>0) printf("%d readable\n",server.nr);
+        //if (server.p[0].revents != 0) printf("%04x\n",server.p[0].revents);
+        for(i=0; i<server.nr; i++) {
+            struct sockaddr_in cadr;
+            int size = sizeof(cadr);
+            int cl = accept(server.r[i], (struct sockaddr *)&cadr, &size);
+            if (cl < 0) printf("Failed to accept, %s\n",strerror(errno));
+            printf("Accepted from %s:%d\n",inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
+
+            FILE * csock = fdopen(cl, "r+");
+            if (!csock) printf("Failed to fdopen, %s\n",strerror(errno));
+            fprintf(csock, "Welcome to the leet server\n");
+
+            pollblock_add_file(&clients, csock);
+        }
+
+        pollblock_poll_file(&clients, 100);
+        for(i=0; i<client.nr; i++) {
+            
+        }
+    }
+#endif
+}
+
 int main(int ac, char **av) {
 
     //test_buffers();
     //test_files();
     //test_compression();
     //test_image2();
-    test_stream();
+    //test_stream();
 
     //test_server();
+    test_event();
 
     return 0;
 }
