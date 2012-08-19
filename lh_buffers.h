@@ -58,6 +58,8 @@ memset(baz, 0, sizeof(int)*N);
 
 */
 
+#define CLEAR(name) memset(&name, 0, sizeof(name));
+
 // These three macros assign the allocated element(s) to a new variable
 
 // allocate single element of 'type'
@@ -90,16 +92,10 @@ memset(baz, 0, sizeof(int)*N);
 
 // extend the allocated array 'name' with currently 'nname' elements to 'num'
 #define ARRAY_EXTENDG(type,name,nname,num,gran)                         \
-    if (GRANSIZE(num,gran) > GRANSIZE(nname,gran)) {                    \
+    if (GRANSIZE(num,gran) > GRANSIZE(nname,gran))                      \
         name = (type *)realloc(name,GRANSIZE(num,gran)*sizeof(type));   \
-    }                                                                   \
     nname = num;
 //FIXME: clear the added range
-
-
-//printf("GRANSIZE(%d,%d) = %d  GRANSIZE(%d,%d) = %d\n",num,gran,GRANSIZE(num,gran),nname,gran,GRANSIZE(nname,gran)); \
-//printf("Extending array to %d, new pointer = %08x\n",GRANSIZE(num,gran),name); \
-//if (!name) LH_ERROR(1,"Failed to realloc");                           \
 
 // add a number of 
 #define ARRAY_ADDG(type,name,nname,num,gran) ARRAY_EXTENDG(type,name,nname,nname+num,gran)
@@ -116,6 +112,8 @@ memset(baz, 0, sizeof(int)*N);
 #define BUFFER_ALLOC(name,nname,size)        BUFFER_ALLOCG(name,nname,size,1)
 #define BUFFER_EXTEND(name,nname,size)       BUFFER_EXTENDG(name,nname,size,1)
 #define BUFFER_ADD(name,nname,size)          BUFFER_ADDG(name,nname,size,1)
+
+#define ARRAY_DELETE(type, name, nname, idx) memcpy((name)+(idx), (name)+(idx)+1, ((nname)-1-(idx))*sizeof(type));
 
 ////////////////////////////////////////////////////////////////////////////////
 // Extraction of values from a byte stream
