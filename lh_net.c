@@ -22,6 +22,9 @@ int sock_server_ipv4_tcp(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s < 0) LH_ERROR(-1, "sock_server_ipv4_tcp: failed to create socket PF_INET/SOCK_STREAM/IPPROTO_TCP");
 
+    int v = 1;
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(v));
+
     if (sock_bind_ipv4(s,ip,port)) return -1;
 
     if (listen(s, LH_NET_DEFAULT_BACKLOG)) LH_ERROR(-1, "sock_server_ipv4_tcp: listen failed");

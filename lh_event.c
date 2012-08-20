@@ -18,7 +18,7 @@ int pollarray_add(pollarray * pa, pollgroup * pg, int fd, short mode, void * dat
     ARRAY_ADD(FILE *, pg->rfiles, pg->num, 1); pg->num=j;
     ARRAY_ADD(FILE *, pg->wfiles, pg->num, 1); pg->num=j;
     ARRAY_ADD(void *, pg->rdata, pg->num, 1); pg->num=j;
-    ARRAY_ADD(void *, pg->rdata, pg->num, 1);
+    ARRAY_ADD(void *, pg->wdata, pg->num, 1);
 
     return i;
 }
@@ -80,16 +80,17 @@ int evfile_poll(pollarray *pa, int timeout) {
         if (pa->p[i].revents & POLLIN) {
             pg->rfds[pg->rnum]   = pa->p[i].fd;
             pg->rfiles[pg->rnum] = pa->files[i];
-            pg->rdata[pg->rnum]   = pa->data[i];
+            pg->rdata[pg->rnum]  = pa->data[i];
             pg->rnum++;
         }
         if (pa->p[i].revents & POLLOUT) {
             pg->wfds[pg->wnum]   = pa->p[i].fd;
             pg->wfiles[pg->wnum] = pa->files[i];
-            pg->wdata[pg->wnum]   = pa->data[i];
+            pg->wdata[pg->wnum]  = pa->data[i];
             pg->wnum++;
         }
     }
+    return 0;
 }
 
 

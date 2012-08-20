@@ -244,12 +244,37 @@ void test_event() {
     pollgroup sg;
     CLEAR(sg);
 
-    pollarray_add(&pa, &sg, ss, MODE_RW, NULL);
+    pollgroup cg;
+    CLEAR(cg);
+
+    pollarray_add(&pa, &sg, ss, MODE_R, NULL);
 
     int stay = 1, i;
     while(stay) {
         evfile_poll(&pa, 100);
-        
+
+        // handle server requests
+        for(i=0; i<sg.rnum; i++) {
+            struct sockaddr_in cadr;
+            int size = sizeof(cadr);
+            int cl = accept(sg.rfds[i], (struct sockaddr *)&cadr, &size);
+            if (cl < 0) printf("Failed to accept, %s\n",strerror(errno));
+            printf("Accepted from %s:%d\n",inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
+
+            FILE * csock = fdopen(cl, "r+");
+            if (!csock) printf("Failed to fdopen, %s\n",strerror(errno));
+            fprintf(csock, "Welcome to the leet server\n");
+
+            pollarray_add_file(&pa, &cg, csock, MODE_RW, NULL);
+            printf("Added successfully\n");
+        }
+
+        #if 0
+        // handle client requests
+        for(i=0; i<cg.rnum; i++) {
+            
+        }
+        #endif
     }
 
 
