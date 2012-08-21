@@ -32,6 +32,59 @@ typedef struct {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TESTGRAN(num) printf("num=%d gran=%d rest=%d size=%d\n", \
+                             num,16,GRANREST(num,16),GRANSIZE(num,16));
+void test_pp() {
+    printf("Testing generic PP macros\n");
+
+    printf("VA_LENGTH\n");
+    printf("%d\n",VA_LENGTH(a,b,c));
+    printf("%d\n",VA_LENGTH(a,b,c,d,e));
+    printf("%d\n",VA_LENGTH(a));
+    printf("%d\n",VA_LENGTH());
+
+    printf("GRAN\n");
+    TESTGRAN(0);
+    TESTGRAN(1);
+    TESTGRAN(13);
+    TESTGRAN(15);
+    TESTGRAN(16);
+    TESTGRAN(17);
+    TESTGRAN(18);
+    TESTGRAN(31);
+    TESTGRAN(32);
+    TESTGRAN(1000);
+}
+
+void test_clear() {
+    printf("Testing clear macros\n");
+    char str[] = "ABCDEF";
+    char *s = strdup("GHIJKL");
+
+    printf("CLEAR\n");
+    hexdump(str,sizeof(str));
+    CLEAR(str);
+    hexdump(str,sizeof(str));
+
+    printf("CLEARP\n");
+    hexdump(s,6);
+    CLEARP(s);
+    hexdump(s,6);
+
+    printf("CLEARN\n");
+    CLEARN(s,4);
+    hexdump(s,6);
+
+    free(s);
+
+    s = strdup("MNOPQRSTUVWXYZ");
+    printf("CLEAR_RANGE\n");
+    hexdump(s,14);
+    CLEAR_RANGE(s,4,5);
+    hexdump(s,14);
+}
+
+
 void test_buffers() {
 #if 0
     ALLOC(model,m);
@@ -320,6 +373,8 @@ void test_event() {
 
 int main(int ac, char **av) {
 
+    test_pp();
+    test_clear();
     //test_buffers();
     //test_files();
     //test_compression();
@@ -327,7 +382,7 @@ int main(int ac, char **av) {
     //test_stream();
 
     //test_server();
-    test_event();
+    //test_event();
 
     return 0;
 }

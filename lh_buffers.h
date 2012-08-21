@@ -4,97 +4,87 @@
 #include <stdint.h>
 
 /*
-lh_buffers - macros for handling buffers and arrays
+lh_buffers - macros for handling buffers and arrays,
+as well as generic preprocessor macros
 */
 
 ////////////////////////////////////////////////////////////////////////////////
+// Generic macros
 
-/* allocation macros
-
---------------------------------------------------------------------------------
-Examples of allocation tasks for a new variable:
-Macro: ALLOC, ALLOCN, ALLOCB
-
-fixed-length buffer
-char *buffer = (char *)malloc(SIZE);
-memset(buffer, 0, SIZE)
-ALLOCN(char, buffer, SIZE);
-ALLOCB(buffer, SIZE);
-
-fixed-size object
-struct foo *baz = (struct *)malloc(sizeof(struct foo));
-memset(baz, 0, sizeof(struct foo));
-ALLOC(struct foo, baz);
-
-array of objects
-struct foo *baz = (struct *)malloc(sizeof(struct foo)*N);
-memset(baz, 0, sizeof(struct foo)*N);
-ALLOCN(struct foo, baz, N);
-
-array of elements
-int *baz = (struct *)malloc(sizeof(int)*N);
-memset(baz, 0, sizeof(int)*N);
-ALLOCN(int, baz, N);
-
---------------------------------------------------------------------------------
-Examples of allocation tasks for an existing variable:
-Macro: ALLOCE, ALLOCNE, ALLOCBE
-
-fixed-length buffer
-buffer = (char *)malloc(SIZE);
-memset(buffer, 0, SIZE)
-
-fixed-size object
-baz = (struct *)malloc(sizeof(struct foo));
-memset(baz, 0, sizeof(struct foo));
-
-array of objects
-baz = (struct *)malloc(sizeof(struct foo)*N);
-memset(baz, 0, sizeof(struct foo)*N);
-
-array of elements
-baz = (struct *)malloc(sizeof(int)*N);
-memset(baz, 0, sizeof(int)*N);
-
+/*
+determine the length of the __VA_ARGS__ list. This macro only works for up to 16
+elements. This can be extended to up to 63 elements before you hit the
+preprocessor own limit. This also does not work for the empty list - returns 1
 */
 
-// clear a single variable
-#define CLEAR(name) memset(&name, 0, sizeof(name));
+#define VA_LENGTH_16(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,N,...) N
+#define VA_LENGTH(...) VA_LENGTH_16(__VA_ARGS__,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1)
 
-// These three macros assign the allocated element(s) to a new variable
-
-// allocate single element of 'type'
-#define ALLOC(type,name) ALLOCN(type,name,1)
-// allocate a byte buffer of 'size' bytes
-#define ALLOCB(name,size) ALLOCN(unsigned char,name,size)
-// allocate 'num' elements of 'type'
-#define ALLOCN(type,name,num) type * ALLOCNE(type,name,num)
-
-// These three macros assign the allocated element(s) to an existing variable
-
-// allocate single element of 'type'
-#define ALLOCE(type,name) ALLOCNE(type,name,1)
-// allocate a byte buffer of 'size' bytes
-#define ALLOCBE(name,size) ALLOCNE(unsigned char,name,size)
-// allocate 'num' elements of 'type'
-#define ALLOCNE(type,name,num) name = (type *) malloc((num)*sizeof(type)); memset(name, 0, (num)*sizeof(type));
-
-////////////////////////////////////////////////////////////////////////////////
-// Expandable arrays and buffers
-// they are defined through the 'type' of their elements, a type pointer 'name'
-// and the array size variable 'nname'. The allocated size of the array can be 
-// granular to 'gran' boundaries in order to re
-
-
-// helper functions
-
+/*
+helper macros used in calculation of granular sizes
+*/
 // calculate the number of remaining elements from 'num' to the next 'gran' boundary
 #define GRANREST(num,gran) ((gran)-((unsigned)num))%(gran)
 // calculate the next 'gran' boundary after 'num'
 #define GRANSIZE(num,gran) ((num)+GRANREST(num,gran))
 
-// realloc() an array
-//#define RESIZE_T(type, name, num) name = (type *)realloc(name, num*sizeof(type));
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Clearing macros
+
+// clear a single object (pointer)
+#define CLEARP(ptr) CLEARN(ptr,1)
+
+// clear a single object (non-pointer)
+#define CLEAR(obj) CLEARP(&(obj))
+
+// clear a set of objects (pointer)
+#define CLEARN(ptr,N) memset((ptr), 0, sizeof(*(ptr))*(N))
+
+// clear a number 'num' elements in the array
+#define CLEAR_RANGE(ptr, from, num) if ( num > 0 ) CLEARN(ptr+from, num)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Allocation macros
+
+// all allocation macros will clear the resulting array buffer or object
+
+// ALLOC, ALLOCN, ALLOCB - allocate and place in a new pointer variable
+
+// allocate single element of 'type'
+#define ALLOC(type,name) ALLOCN(type,name,1)
+
+// allocate a byte buffer of 'size' bytes
+#define ALLOCB(name,size) ALLOCN(unsigned char,name,size)
+
+// allocate 'num' elements of 'type'
+#define ALLOCN(type,name,num) type * ALLOCNE(type,name,num)
+
+// ALLOCE, ALLOCNE, ALLOCBE - allocate and place in an existing variable
+
+// allocate single element of 'type'
+#define ALLOCE(type,name) ALLOCNE(type,name,1)
+
+// allocate a byte buffer of 'size' bytes
+#define ALLOCBE(name,size) ALLOCNE(unsigned char,name,size)
+
+// allocate 'num' elements of 'type'
+#define ALLOCNE(type,name,num)                  \
+    name = (type *) malloc((num)*sizeof(type)); \
+    CLEARP(name);
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Expandable arrays and buffers
+
+
+// they are defined through the 'type' of their elements, a type pointer 'name'
+// and the array size variable 'nname'. The allocated size of the array can be 
+// granular to 'gran' boundaries in order to re
+
 
 
 #define RESIZE(name, num) name = realloc(name, num*sizeof(*name));
@@ -108,10 +98,6 @@ memset(baz, 0, sizeof(int)*N);
 
 #define RESIZE_1(name, nname, inc, gran)
 
-// clear a number 'num' elements in the array
-#define CLEAR_RANGE(type, name, from, num)                              \
-    if ( num > 0 )                                                      \
-        memset(name+from, 0, (num)*sizeof(type));
 
 // delete a single element at position 'idx'
 #define ARRAY_DELETE(type, name, nname, idx) memcpy((name)+(idx), (name)+(idx)+1, ((nname)-1-(idx))*sizeof(type));
@@ -127,7 +113,7 @@ memset(baz, 0, sizeof(int)*N);
 #define ARRAY_EXTENDG(type,name,nname,num,gran) {                       \
     if (GRANSIZE(num,gran) > GRANSIZE(nname,gran))                      \
         RESIZE(name,GRANSIZE(num,gran));                                \
-    CLEAR_RANGE(type, name, nname, GRANSIZE(num,gran)-nname);           \
+    CLEAR_RANGE(name, nname, GRANSIZE(num,gran)-nname);           \
     nname = num;                                                        \
     }
 
