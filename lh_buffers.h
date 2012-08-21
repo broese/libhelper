@@ -58,6 +58,7 @@ memset(baz, 0, sizeof(int)*N);
 
 */
 
+// clear a single variable
 #define CLEAR(name) memset(&name, 0, sizeof(name));
 
 // These three macros assign the allocated element(s) to a new variable
@@ -80,10 +81,42 @@ memset(baz, 0, sizeof(int)*N);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Expandable arrays and buffers
+// they are defined through the 'type' of their elements, a type pointer 'name'
+// and the array size variable 'nname'. The allocated size of the array can be 
+// granular to 'gran' boundaries in order to re
 
-// granularity macros
+
+// helper functions
+
+// calculate the number of remaining elements from 'num' to the next 'gran' boundary
 #define GRANREST(num,gran) ((gran)-((unsigned)num))%(gran)
+// calculate the next 'gran' boundary after 'num'
 #define GRANSIZE(num,gran) ((num)+GRANREST(num,gran))
+
+// realloc() an array
+//#define RESIZE_T(type, name, num) name = (type *)realloc(name, num*sizeof(type));
+
+
+#define RESIZE(name, num) name = realloc(name, num*sizeof(*name));
+#define RESIZE_SIZE(sname,nname,inc,gran) do {                          \
+    int sname = GRANSIZE(nname+inc,gran);                               \
+    if (sname > GRANSIZE(nname,gran) )
+
+#define RESIZE_SIZE_FOOT(nname,inc)                                     \
+    nname += inc;                                                       \
+    } while(0);
+
+#define RESIZE_1(name, nname, inc, gran)
+
+// clear a number 'num' elements in the array
+#define CLEAR_RANGE(type, name, from, num)                              \
+    if ( num > 0 )                                                      \
+        memset(name+from, 0, (num)*sizeof(type));
+
+// delete a single element at position 'idx'
+#define ARRAY_DELETE(type, name, nname, idx) memcpy((name)+(idx), (name)+(idx)+1, ((nname)-1-(idx))*sizeof(type));
+
+// granular and non-granular allocation of arrays
 
 // allocate array with 'num' elements of 'type'. Place the pointer to 'name' and number to 'nname'
 #define ARRAY_ALLOCG(type,name,nname,num,gran)                          \
@@ -91,15 +124,15 @@ memset(baz, 0, sizeof(int)*N);
     nname = num;
 
 // extend the allocated array 'name' with currently 'nname' elements to 'num'
-#define ARRAY_EXTENDG(type,name,nname,num,gran)                         \
+#define ARRAY_EXTENDG(type,name,nname,num,gran) {                       \
     if (GRANSIZE(num,gran) > GRANSIZE(nname,gran))                      \
-        name = (type *)realloc(name,GRANSIZE(num,gran)*sizeof(type));   \
-    nname = num;
-//FIXME: clear the added range
+        RESIZE(name,GRANSIZE(num,gran));                                \
+    CLEAR_RANGE(type, name, nname, GRANSIZE(num,gran)-nname);           \
+    nname = num;                                                        \
+    }
 
-// add a number of 
+// add 'num' elements
 #define ARRAY_ADDG(type,name,nname,num,gran) ARRAY_EXTENDG(type,name,nname,nname+num,gran)
-
 
 #define ARRAY_ALLOC(type,name,nname,num)     ARRAY_ALLOCG(type,name,nname,num,1)
 #define ARRAY_EXTEND(type,name,nname,num)    ARRAY_EXTENDG(type,name,nname,num,1)
@@ -113,7 +146,8 @@ memset(baz, 0, sizeof(int)*N);
 #define BUFFER_EXTEND(name,nname,size)       BUFFER_EXTENDG(name,nname,size,1)
 #define BUFFER_ADD(name,nname,size)          BUFFER_ADDG(name,nname,size,1)
 
-#define ARRAY_DELETE(type, name, nname, idx) memcpy((name)+(idx), (name)+(idx)+1, ((nname)-1-(idx))*sizeof(type));
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Extraction of values from a byte stream

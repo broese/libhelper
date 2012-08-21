@@ -89,6 +89,44 @@ void test_buffers() {
 
     printf("Total length: %d\n%s\n",n-1,str);
 #endif
+
+#if 1
+    face * f;
+    int nf;
+    ARRAY_ALLOCG(face, f, nf, 3, 4);
+
+    f[0].a = 1; f[0].b = 2; f[0].c = 3;
+    f[1].a = 11; f[1].b = 12; f[1].c = 13;
+    f[2].a = 21; f[2].b = 22; f[2].c = 23;
+
+    printf("f=%08p nf=%d\n",f,nf);
+    hexdump((unsigned char *)f, nf*sizeof(*f));
+
+    ARRAY_ADDG(face, f, nf, 1, 4);
+    f[3].a = 31; f[3].b = 32; f[3].c = 33;
+
+    printf("f=%08p nf=%d\n",f,nf);
+    hexdump((unsigned char *)f, nf*sizeof(*f));
+
+    ARRAY_EXTENDG(face, f, nf, 2, 4);
+
+    printf("f=%08p nf=%d\n",f,nf);
+    hexdump((unsigned char *)f, nf*sizeof(*f));
+
+    ARRAY_EXTENDG(face, f, nf, 4, 4);
+
+    printf("f=%08p nf=%d\n",f,nf);
+    hexdump((unsigned char *)f, nf*sizeof(*f));
+
+    ARRAY_ADDG(face, f, nf, 13, 4);
+
+    printf("f=%08p nf=%d\n",f,nf);
+    hexdump((unsigned char *)f, nf*sizeof(*f));
+
+
+
+#endif
+
 }
 
 void test_files() {
@@ -253,6 +291,7 @@ void test_event() {
     while(stay) {
         evfile_poll(&pa, 100);
 
+        #if 0
         // handle server requests
         for(i=0; i<sg.rnum; i++) {
             struct sockaddr_in cadr;
@@ -268,6 +307,7 @@ void test_event() {
             pollarray_add_file(&pa, &cg, csock, MODE_RW, NULL);
             printf("Added successfully\n");
         }
+        #endif
 
         #if 0
         // handle client requests
@@ -276,44 +316,6 @@ void test_event() {
         }
         #endif
     }
-
-
-
-
-
-#if 0
-    pollblock_fd server;
-    CLEAR(server);
-    pollblock_add_fd(&server, ss);
-
-    pollblock_file clients;
-    CLEAR(clients);
-
-    int stay = 1, i;
-    while(stay) {
-        pollblock_poll_fd(&server, 100);
-        //if (server.nr>0) printf("%d readable\n",server.nr);
-        //if (server.p[0].revents != 0) printf("%04x\n",server.p[0].revents);
-        for(i=0; i<server.nr; i++) {
-            struct sockaddr_in cadr;
-            int size = sizeof(cadr);
-            int cl = accept(server.r[i], (struct sockaddr *)&cadr, &size);
-            if (cl < 0) printf("Failed to accept, %s\n",strerror(errno));
-            printf("Accepted from %s:%d\n",inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
-
-            FILE * csock = fdopen(cl, "r+");
-            if (!csock) printf("Failed to fdopen, %s\n",strerror(errno));
-            fprintf(csock, "Welcome to the leet server\n");
-
-            pollblock_add_file(&clients, csock);
-        }
-
-        pollblock_poll_file(&clients, 100);
-        for(i=0; i<client.nr; i++) {
-            
-        }
-    }
-#endif
 }
 
 int main(int ac, char **av) {
