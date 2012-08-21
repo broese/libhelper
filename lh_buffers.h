@@ -60,79 +60,117 @@ helper macros used in calculation of granular sizes
 #define ALLOCB(name,size) ALLOCN(unsigned char,name,size)
 
 // allocate 'num' elements of 'type'
-#define ALLOCN(type,name,num) type * ALLOCNE(type,name,num)
+#define ALLOCN(type,name,num) type * ALLOCNE(name,num)
 
 // ALLOCE, ALLOCNE, ALLOCBE - allocate and place in an existing variable
 
 // allocate single element of 'type'
-#define ALLOCE(type,name) ALLOCNE(type,name,1)
+#define ALLOCE(ptr) ALLOCNE(ptr,1)
 
 // allocate a byte buffer of 'size' bytes
-#define ALLOCBE(name,size) ALLOCNE(unsigned char,name,size)
+#define ALLOCBE(ptr,size) ALLOCNE(ptr,size)
 
 // allocate 'num' elements of 'type'
-#define ALLOCNE(type,name,num)                  \
-    name = (type *) malloc((num)*sizeof(type)); \
-    CLEARP(name);
+#define ALLOCNE(ptr,num)                        \
+    ptr = malloc((num)*sizeof(*ptr));           \
+    CLEARN(ptr,num);
 
 
 
 ////////////////////////////////////////////////////////////////////////////////
 // Expandable arrays and buffers
 
+/*
+The expandable arrays are defined via variable 'ptr' holding the pointer to data
+and 'cnt' - an integer variable holding the count of elements. The macros
+perform allocating and resizing of these arrays. Allocation granularity can be
+additionally specified in the granular versions of the macros
+*/
 
-// they are defined through the 'type' of their elements, a type pointer 'name'
-// and the array size variable 'nname'. The allocated size of the array can be 
-// granular to 'gran' boundaries in order to re
+// helper wrapper macro for realloc();
+#define RESIZE(ptr, num) ptr = realloc(ptr, num*sizeof(*ptr));
 
+// wrapped macro for declaration of such arrays
+#define ARRAY(type,ptr,cnt) type * ptr; int cnt;
 
+// allocate array with 'num' elements, place the pointer to 'ptr' and
+// element count to 'cnt'
+#define ARRAY_ALLOCG(ptr,cnt,num,gran) {                                \
+        ALLOCNE(ptr,GRANSIZE(num,gran));                                \
+        cnt=num;                                                        \
+    }
 
-#define RESIZE(name, num) name = realloc(name, num*sizeof(*name));
-#define RESIZE_SIZE(sname,nname,inc,gran) do {                          \
-    int sname = GRANSIZE(nname+inc,gran);                               \
-    if (sname > GRANSIZE(nname,gran) )
-
-#define RESIZE_SIZE_FOOT(nname,inc)                                     \
-    nname += inc;                                                       \
-    } while(0);
-
-#define RESIZE_1(name, nname, inc, gran)
-
-
-// delete a single element at position 'idx'
-#define ARRAY_DELETE(type, name, nname, idx) memcpy((name)+(idx), (name)+(idx)+1, ((nname)-1-(idx))*sizeof(type));
-
-// granular and non-granular allocation of arrays
-
-// allocate array with 'num' elements of 'type'. Place the pointer to 'name' and number to 'nname'
-#define ARRAY_ALLOCG(type,name,nname,num,gran)                          \
-    ALLOCNE(type,name,GRANSIZE(num,gran));                              \
-    nname = num;
-
-// extend the allocated array 'name' with currently 'nname' elements to 'num'
-#define ARRAY_EXTENDG(type,name,nname,num,gran) {                       \
-    if (GRANSIZE(num,gran) > GRANSIZE(nname,gran))                      \
-        RESIZE(name,GRANSIZE(num,gran));                                \
-    CLEAR_RANGE(name, nname, GRANSIZE(num,gran)-nname);           \
-    nname = num;                                                        \
+// extend the allocated array to 'num' elements
+// can be used for downsizing the array as well
+#define ARRAY_EXTENDG(ptr,cnt,num,gran) {                               \
+        if (GRANSIZE(num,gran) > GRANSIZE(cnt,gran))                    \
+            RESIZE(ptr,GRANSIZE(num,gran));                             \
+        if (GRANSIZE(num,gran) > cnt)                                   \
+            CLEAR_RANGE(ptr, cnt, GRANSIZE(num,gran)-cnt);              \
+        cnt=num;                                                        \
     }
 
 // add 'num' elements
-#define ARRAY_ADDG(type,name,nname,num,gran) ARRAY_EXTENDG(type,name,nname,nname+num,gran)
+#define ARRAY_ADDG(ptr,cnt,num,gran)     ARRAY_EXTENDG(ptr,cnt,cnt+num,gran)
 
-#define ARRAY_ALLOC(type,name,nname,num)     ARRAY_ALLOCG(type,name,nname,num,1)
-#define ARRAY_EXTEND(type,name,nname,num)    ARRAY_EXTENDG(type,name,nname,num,1)
-#define ARRAY_ADD(type,name,nname,num)       ARRAY_ADDG(type,name,nname,num,1)
+// non-granular allocation - wrapper macros
+#define ARRAY_ALLOC(ptr,cnt,num)         ARRAY_ALLOCG(ptr,cnt,num,1)
+#define ARRAY_EXTEND(ptr,cnt,num)        ARRAY_EXTENDG(ptr,cnt,num,1)
+#define ARRAY_ADD(ptr,cnt,num)           ARRAY_ADDG(ptr,cnt,num,1)
 
-#define BUFFER_ALLOCG(name,nname,size,gran)  ARRAY_ALLOCG(unsigned char,name,nname,size,gran)
-#define BUFFER_EXTENDG(name,nname,size,gran) ARRAY_EXTENDG(unsigned char,name,nname,size,gran)
-#define BUFFER_ADDG(name,nname,size,gran)    ARRAY_ADDG(unsigned char,name,nname,size,gran)
+// delete a range of 'num' elements starting from position 'from'
+// the following elements are moved to position 'from'
+// the freed space at the end is zeroed
+// the array is resized but not reallocated
+#define ARRAY_DELETE_RANGE(ptr, cnt, from, num) {                       \
+        memcpy((ptr)+(from), (ptr)+(from)+(num),                        \
+               ((cnt)-(num)-(from))*sizeof(*ptr));                      \
+        cnt -= num;                                                     \
+        CLEAR_RANGE(ptr,cnt,num);                                       \
+    }                                                                   
 
-#define BUFFER_ALLOC(name,nname,size)        BUFFER_ALLOCG(name,nname,size,1)
-#define BUFFER_EXTEND(name,nname,size)       BUFFER_EXTENDG(name,nname,size,1)
-#define BUFFER_ADD(name,nname,size)          BUFFER_ADDG(name,nname,size,1)
+// delete a single element at position 'idx'
+#define ARRAY_DELETE(ptr, cnt, idx) ARRAY_DELETE_RANGE(ptr, cnt, idx, 1)
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Expandable multi-arrays
+
+/*
+The concept is similar to an expandable array, but there are multiple
+arrays of the same length. So, we have multiple pointers to data, with 
+potentially different sizeof-s of their elements, but with a commont
+integer counter for the number of elements and same granularity.
+The special macro is capable of simultaneously resizing a semi-arbitrary
+list of pointer names. Technical limitation - their number must be between
+1 and 8, inclusive.
+TODO: resizing does not zero the new elements! Make it similar to ARRAY_EXTEND
+*/
+
+#define RESIZE_1(num,ptr) RESIZE(ptr,num)
+#define RESIZE_2(num,ptr,...) RESIZE_1(num,ptr); RESIZE_1(num,__VA_ARGS__)
+#define RESIZE_3(num,ptr,...) RESIZE_1(num,ptr); RESIZE_2(num,__VA_ARGS__)
+#define RESIZE_4(num,ptr,...) RESIZE_1(num,ptr); RESIZE_3(num,__VA_ARGS__)
+#define RESIZE_5(num,ptr,...) RESIZE_1(num,ptr); RESIZE_4(num,__VA_ARGS__)
+#define RESIZE_6(num,ptr,...) RESIZE_1(num,ptr); RESIZE_5(num,__VA_ARGS__)
+#define RESIZE_7(num,ptr,...) RESIZE_1(num,ptr); RESIZE_6(num,__VA_ARGS__)
+#define RESIZE_8(num,ptr,...) RESIZE_1(num,ptr); RESIZE_7(num,__VA_ARGS__)
+
+#define RESIZE_N_(num,N,...) RESIZE_ ## N(num,__VA_ARGS__)
+#define RESIZE_N(num,N,...) RESIZE_N_(num,N,__VA_ARGS__)
+
+#define ARRAYS_EXTENDG(cnt,num,gran,...) do {                           \
+        int ARRAYS_EXTEND_SIZE = GRANSIZE(num,gran);                    \
+        if (ARRAYS_EXTEND_SIZE > GRANSIZE(cnt,gran)) {                  \
+            RESIZE_N(num, VA_LENGTH(__VA_ARGS__) ,__VA_ARGS__);         \
+        }                                                               \
+        cnt = num;                                                      \
+    } while(0);
+
+#define ARRAYS_EXTEND(cnt,num,...)      ARRAYS_EXTENDG(cnt,num,1,__VA_ARGS__)
+#define ARRAYS_ADDG(cnt,inc,gran,...)   ARRAYS_EXTENDG(cnt,cnt+inc,gran,__VA_ARGS__)
+#define ARRAYS_ADD(cnt,inc,...)         ARRAYS_EXTENDG(cnt,cnt+inc,1,__VA_ARGS__)
 
 
 ////////////////////////////////////////////////////////////////////////////////

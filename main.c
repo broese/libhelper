@@ -86,39 +86,7 @@ void test_clear() {
 
 
 void test_buffers() {
-#if 0
-    ALLOC(model,m);
-    ARRAY_ALLOCG(vertex,m->v,m->nv,100,ALLOC_GRAN);
-    ARRAY_ALLOCG(face,m->f,m->nf,100,ALLOC_GRAN);
-    ARRAY_ADDG(vertex,m->v,m->nv,20,ALLOC_GRAN);
-#endif
-
-#if 0
-    int i;
-    for(i=0; i<20; i++)
-        printf("%3d %3d %3d\n",i,GRANREST(i,ALLOC_GRAN),GRANSIZE(i,ALLOC_GRAN));
-#endif
-
-#if 0
-    int *a, n;
-    //ARRAY_ALLOCG(int,a,n,0,ALLOC_GRAN);
-
-    while(1) {
-        int input;
-        printf("Enter next number: ");
-        if (scanf("%u",&input)==1) {
-            ARRAY_ADDG(int,a,n,1,ALLOC_GRAN);
-            a[n-1] = input;
-        }
-        else {
-            printf("Input finished, the resulting array contains %d elements\n",n);
-            int i;
-            for(i=0; i<n; i++)
-                printf(" %3d : %d\n",i,a[i]);
-            break;
-        }
-    }
-#endif
+    printf("Testing buffers\n");
 
 #if 0
 
@@ -144,9 +112,8 @@ void test_buffers() {
 #endif
 
 #if 1
-    face * f;
-    int nf;
-    ARRAY_ALLOCG(face, f, nf, 3, 4);
+    ARRAY(face,f,nf);
+    ARRAY_ALLOCG(f, nf, 3, 4);
 
     f[0].a = 1; f[0].b = 2; f[0].c = 3;
     f[1].a = 11; f[1].b = 12; f[1].c = 13;
@@ -155,31 +122,89 @@ void test_buffers() {
     printf("f=%08p nf=%d\n",f,nf);
     hexdump((unsigned char *)f, nf*sizeof(*f));
 
-    ARRAY_ADDG(face, f, nf, 1, 4);
+    ARRAY_ADDG(f, nf, 1, 4);
     f[3].a = 31; f[3].b = 32; f[3].c = 33;
 
     printf("f=%08p nf=%d\n",f,nf);
     hexdump((unsigned char *)f, nf*sizeof(*f));
 
-    ARRAY_EXTENDG(face, f, nf, 2, 4);
+    ARRAY_EXTENDG(f, nf, 2, 4);
 
     printf("f=%08p nf=%d\n",f,nf);
     hexdump((unsigned char *)f, nf*sizeof(*f));
 
-    ARRAY_EXTENDG(face, f, nf, 4, 4);
+    ARRAY_EXTENDG(f, nf, 4, 4);
 
     printf("f=%08p nf=%d\n",f,nf);
     hexdump((unsigned char *)f, nf*sizeof(*f));
 
-    ARRAY_ADDG(face, f, nf, 13, 4);
+    ARRAY_ADDG(f, nf, 13, 4);
 
     printf("f=%08p nf=%d\n",f,nf);
     hexdump((unsigned char *)f, nf*sizeof(*f));
 
+    ARRAY_EXTENDG(f, nf, 3, 4);
 
+    printf("f=%08p nf=%d\n",f,nf);
+    hexdump((unsigned char *)f, nf*sizeof(*f));
 
 #endif
 
+#if 1
+    char *cstr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    ARRAY(char,s,len);
+    ARRAY_ALLOCG(s,len,26,16);
+
+    memcpy(s,cstr,26);
+    printf("s=%08p len=%d >%s<\n",s,len,s);
+    hexdump(s, 32);
+
+    ARRAY_DELETE(s,len,3);
+    printf("s=%08p len=%d >%s<\n",s,len,s);
+    hexdump(s, 32);
+
+    ARRAY_DELETE_RANGE(s,len,13,5);
+    printf("s=%08p len=%d >%s<\n",s,len,s);
+    hexdump(s, 32);
+
+    ARRAY_DELETE(s,len,19);
+    printf("s=%08p len=%d >%s<\n",s,len,s);
+    hexdump(s, 32);
+
+    ARRAY_DELETE_RANGE(s,len,17,2);
+    printf("s=%08p len=%d >%s<\n",s,len,s);
+    hexdump(s, 32);
+
+#endif
+}
+
+typedef struct {
+    int num;
+    int * dongs;
+    face * wangs;
+    char ** herps;
+    void ** derps;
+} harbl;
+
+#define TESTHERPS(name) hexdump((char*)name,h.num*sizeof(*name)); printf("\n")
+
+void test_multiarrays() {
+    harbl h;
+    CLEAR(h);
+
+    ARRAYS_ADD(h.num,3,h.dongs,h.wangs,h.herps,h.derps);
+    hexdump((char *)&h,sizeof(h));
+    TESTHERPS(h.dongs);
+    TESTHERPS(h.wangs);
+    TESTHERPS(h.herps);
+    TESTHERPS(h.derps);
+
+    ARRAYS_ADD(h.num,7,h.dongs,h.wangs,h.herps,h.derps);
+    hexdump((char *)&h,sizeof(h));
+    TESTHERPS(h.dongs);
+    TESTHERPS(h.wangs);
+    TESTHERPS(h.herps);
+    TESTHERPS(h.derps);
 }
 
 void test_files() {
@@ -373,9 +398,10 @@ void test_event() {
 
 int main(int ac, char **av) {
 
-    test_pp();
-    test_clear();
+    //test_pp();
+    //test_clear();
     //test_buffers();
+    test_multiarrays();
     //test_files();
     //test_compression();
     //test_image2();
