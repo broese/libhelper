@@ -38,7 +38,7 @@ static unsigned char * zlib_encode_internal
     zs.avail_in = length;
 
     unsigned char *odata;
-    BUFFER_ALLOCG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
+    ARRAY_ALLOCG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
     zs.next_out = odata;
     zs.avail_out = *olength;
 
@@ -59,13 +59,13 @@ static unsigned char * zlib_encode_internal
         ssize_t outsize = zs.next_out - odata;
         if (result == Z_BUF_ERROR) {
         //        if (zs.avail_out < ALLOCGRAN) {
-            BUFFER_ADDG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
+            ARRAY_ADDG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
             zs.next_out = odata + outsize;
             zs.avail_out = *olength - outsize;
         }
     } while(result != Z_STREAM_END);
 
-    BUFFER_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
+    ARRAY_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
     return odata;
 }
 
@@ -97,7 +97,7 @@ static unsigned char * zlib_decode_internal
         LH_ERROR(NULL,"inflateInit failed, error %d\n",result);
 
     unsigned char *odata;
-    BUFFER_ALLOCG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
+    ARRAY_ALLOCG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
     zs.next_out = odata;
     zs.avail_out = *olength;
 
@@ -125,13 +125,13 @@ static unsigned char * zlib_decode_internal
         ssize_t outsize = zs.next_out - odata;
         if (result == Z_BUF_ERROR) {
         //        if (zs.avail_out < ALLOCGRAN) {
-            BUFFER_ADDG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
+            ARRAY_ADDG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
             zs.next_out = odata + outsize;
             zs.avail_out = *olength - outsize;
         }
     } while(result != Z_STREAM_END);
 
-    BUFFER_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
+    ARRAY_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
     return odata;
 }
 

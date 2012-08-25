@@ -14,7 +14,7 @@ lhimage * allocate_image(int width, int height) {
     ALLOC(lhimage,img);
     img->width = width;
     img->height = height;
-    ALLOCNE(uint32_t,img->data,width*height);
+    ALLOCNE(img->data,width*height);
     return img;
 }
 
@@ -70,7 +70,7 @@ static void pngio_read(png_structp png, png_bytep data, png_size_t length) {
 static void pngio_write(png_structp png, png_bytep data, png_size_t length) {
     pngbuf * buf = (pngbuf *) png_get_io_ptr(png);
     ssize_t offset = buf->size;
-    BUFFER_ADDG(buf->buffer, buf->size, length, PNGGRAN);
+    ARRAY_ADDG(buf->buffer, buf->size, length, PNGGRAN);
     memcpy(buf->buffer + offset, data, length);
 }
 
@@ -94,7 +94,7 @@ unsigned char * export_png(lhimage *img, ssize_t *osize) {
 
 
     // set our custom write function
-    BUFFER_ALLOCG(buffer.buffer, buffer.size, 0, PNGGRAN);
+    ARRAY_ALLOCG(buffer.buffer, buffer.size, 0, PNGGRAN);
     buffer.offset = 0;
 
     if (setjmp(png_jmpbuf(png))) {

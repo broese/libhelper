@@ -75,6 +75,11 @@ helper macros used in calculation of granular sizes
     ptr = malloc((num)*sizeof(*ptr));           \
     CLEARN(ptr,num);
 
+////////////////////////////////////////////////////////////////////////////////
+// Sorting macros
+
+//#define SORT(ptr, cnt, elem) qsort(ptr, cnt, sizeof(*ptr), 
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,6 +137,16 @@ additionally specified in the granular versions of the macros
 // delete a single element at position 'idx'
 #define ARRAY_DELETE(ptr, cnt, idx) ARRAY_DELETE_RANGE(ptr, cnt, idx, 1)
 
+// macro versions that do not update cnt
+#define ARRAY_DELETE_RANGE_NU(ptr, cnt, from, num) {                       \
+        memcpy((ptr)+(from), (ptr)+(from)+(num),                        \
+               ((cnt)-(num)-(from))*sizeof(*ptr));                      \
+        CLEAR_RANGE(ptr,(cnt)-(num),num);                               \
+    }                                                                   
+
+// delete a single element at position 'idx'
+#define ARRAY_DELETE_NU(ptr, cnt, idx) ARRAY_DELETE_RANGE_NU(ptr, cnt, idx, 1)
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,22 +163,30 @@ list of pointer names. Technical limitation - their number must be between
 TODO: resizing does not zero the new elements! Make it similar to ARRAY_EXTEND
 */
 
-#define RESIZE_1(num,ptr) RESIZE(ptr,num)
-#define RESIZE_2(num,ptr,...) RESIZE_1(num,ptr); RESIZE_1(num,__VA_ARGS__)
-#define RESIZE_3(num,ptr,...) RESIZE_1(num,ptr); RESIZE_2(num,__VA_ARGS__)
-#define RESIZE_4(num,ptr,...) RESIZE_1(num,ptr); RESIZE_3(num,__VA_ARGS__)
-#define RESIZE_5(num,ptr,...) RESIZE_1(num,ptr); RESIZE_4(num,__VA_ARGS__)
-#define RESIZE_6(num,ptr,...) RESIZE_1(num,ptr); RESIZE_5(num,__VA_ARGS__)
-#define RESIZE_7(num,ptr,...) RESIZE_1(num,ptr); RESIZE_6(num,__VA_ARGS__)
-#define RESIZE_8(num,ptr,...) RESIZE_1(num,ptr); RESIZE_7(num,__VA_ARGS__)
+#define RESIZE_1(oldnum,num,ptr) RESIZE(ptr,num); CLEARN(ptr+oldnum,num-oldnum);
+#define RESIZE_2(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_1(oldnum,num,__VA_ARGS__)
+#define RESIZE_3(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_2(oldnum,num,__VA_ARGS__)
+#define RESIZE_4(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_3(oldnum,num,__VA_ARGS__)
+#define RESIZE_5(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_4(oldnum,num,__VA_ARGS__)
+#define RESIZE_6(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_5(oldnum,num,__VA_ARGS__)
+#define RESIZE_7(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_6(oldnum,num,__VA_ARGS__)
+#define RESIZE_8(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_7(oldnum,num,__VA_ARGS__)
+#define RESIZE_9(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_8(oldnum,num,__VA_ARGS__)
+#define RESIZE_10(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_9(oldnum,num,__VA_ARGS__)
+#define RESIZE_11(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_10(oldnum,num,__VA_ARGS__)
+#define RESIZE_12(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_11(oldnum,num,__VA_ARGS__)
+#define RESIZE_13(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_12(oldnum,num,__VA_ARGS__)
+#define RESIZE_14(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_13(oldnum,num,__VA_ARGS__)
+#define RESIZE_15(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_14(oldnum,num,__VA_ARGS__)
+#define RESIZE_16(oldnum,num,ptr,...) RESIZE_1(oldnum,num,ptr); RESIZE_15(oldnum,num,__VA_ARGS__)
 
-#define RESIZE_N_(num,N,...) RESIZE_ ## N(num,__VA_ARGS__)
-#define RESIZE_N(num,N,...) RESIZE_N_(num,N,__VA_ARGS__)
+#define RESIZE_N_(oldnum,num,N,...) RESIZE_ ## N(oldnum,num,__VA_ARGS__)
+#define RESIZE_N(oldnum,num,N,...) RESIZE_N_(oldnum,num,N,__VA_ARGS__)
 
 #define ARRAYS_EXTENDG(cnt,num,gran,...) do {                           \
         int ARRAYS_EXTEND_SIZE = GRANSIZE(num,gran);                    \
         if (ARRAYS_EXTEND_SIZE > GRANSIZE(cnt,gran)) {                  \
-            RESIZE_N(num, VA_LENGTH(__VA_ARGS__) ,__VA_ARGS__);         \
+            RESIZE_N(cnt, ARRAYS_EXTEND_SIZE, VA_LENGTH(__VA_ARGS__) ,__VA_ARGS__);     \
         }                                                               \
         cnt = num;                                                      \
     } while(0);
@@ -171,6 +194,8 @@ TODO: resizing does not zero the new elements! Make it similar to ARRAY_EXTEND
 #define ARRAYS_EXTEND(cnt,num,...)      ARRAYS_EXTENDG(cnt,num,1,__VA_ARGS__)
 #define ARRAYS_ADDG(cnt,inc,gran,...)   ARRAYS_EXTENDG(cnt,cnt+inc,gran,__VA_ARGS__)
 #define ARRAYS_ADD(cnt,inc,...)         ARRAYS_EXTENDG(cnt,cnt+inc,1,__VA_ARGS__)
+
+//TODO: ARRAYS_DELETE
 
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -12,27 +12,27 @@
 #define MODE_RW (POLLIN|POLLOUT)
 
 // struct pollgroup is used to return the results of the poll()
-// evfile_poll() will update the arrays *fds,*files and *data with the
-// list of currently readable and writable descriptors, respectively.
-// these arrays are pre-allocated to the maximum number of monitored
-// file descriptors in the group, this number is in 'num'
-// 'files' array will contain FILE* if the user supplied it for
-// the specific fd, otherwise NULL
+// evfile_poll() will fill the r,w and e arrays with the indexes of
+// pollarray elements that became readable, writable, or have errors,
+// respectively. The rn, wn and en integers store the number of indexes
+// in each array.
+// The r,w and e arrays must be pre-allocated to the total number of
+// file descriptors managed by the group before calling evfile_poll(), in
+// order to provide sufficient space for each situation.
 // The user should pre-allocate and zero this structure before use
 // The user can maintain multiple such structures and specify one of them
 // when assigning a new file descriptor to a pollarray
 typedef struct {
     int     num;        // allocated number
 
-    int     rnum;       // number of readable descriptors
-    int   * rfds;       // integer descriptors
-    FILE ** rfiles;     // POSIX-style descriptors
-    void ** rdata;      // optional opaque private data
+    int     rn;         // readable descriptors
+    int   * r;
 
-    int     wnum;       // number of readable descriptors
-    int   * wfds;       // integer descriptors
-    FILE ** wfiles;     // POSIX-style descriptors
-    void ** wdata;      // optional opaque private data
+    int     wn;         // writable descriptors
+    int   * w;
+
+    int     en;         // descriptors with errors
+    int   * e;
 } pollgroup;
 
 // semi-global array of descriptors polled in a single poll() calls
@@ -50,5 +50,8 @@ int pollarray_add(pollarray * pa, pollgroup * pg, int fd, short mode, void * dat
 int pollarray_add_file(pollarray * pa, pollgroup * pg, FILE *fd, short mode, void * data);
 int pollarray_remove(pollarray * pa, int fd);
 int pollarray_remove_file(pollarray *pa, FILE *fd);
+int pollarray_find(pollarray * pa, int fd);
+int pollarray_find_file(pollarray * pa, FILE *fd);
+
 int evfile_poll(pollarray *pa, int timeout);
 

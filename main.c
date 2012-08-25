@@ -150,7 +150,7 @@ void test_buffers() {
 
 #endif
 
-#if 1
+#if 0
     char *cstr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     ARRAY(char,s,len);
     ARRAY_ALLOCG(s,len,26,16);
@@ -176,6 +176,12 @@ void test_buffers() {
     hexdump(s, 32);
 
 #endif
+
+
+#if 1
+    
+#endif
+
 }
 
 typedef struct {
@@ -189,6 +195,8 @@ typedef struct {
 #define TESTHERPS(name) hexdump((char*)name,h.num*sizeof(*name)); printf("\n")
 
 void test_multiarrays() {
+    printf("Testing Multiarrays\n");
+
     harbl h;
     CLEAR(h);
 
@@ -369,9 +377,8 @@ void test_event() {
     while(stay) {
         evfile_poll(&pa, 100);
 
-        #if 0
         // handle server requests
-        for(i=0; i<sg.rnum; i++) {
+        for(i=0; i<sg.rn; i++) {
             struct sockaddr_in cadr;
             int size = sizeof(cadr);
             int cl = accept(sg.rfds[i], (struct sockaddr *)&cadr, &size);
@@ -381,18 +388,27 @@ void test_event() {
             FILE * csock = fdopen(cl, "r+");
             if (!csock) printf("Failed to fdopen, %s\n",strerror(errno));
             fprintf(csock, "Welcome to the leet server\n");
+            fflush(csock);
 
             pollarray_add_file(&pa, &cg, csock, MODE_RW, NULL);
             printf("Added successfully\n");
         }
-        #endif
 
-        #if 0
         // handle client requests
-        for(i=0; i<cg.rnum; i++) {
-            
+        for(i=0; i<cg.rn; i++) {
+            FILE * fd = cg.rfiles[i];
+            char buf[1024];
+            ssize_t len = fread(buf, 1, 100, fd);
+            fprintf(fd, "Read %d bytes\n",len);
+            fflush(fd);
         }
-        #endif
+
+        for(i=0; i<cg.en; i++) {
+            FILE * fd = cg.efiles[i];
+            fclose(fd);
+            printf("Closed FILE %d\n",cg.efds[i]);
+            pollarray_remove_file(&pa, fd);
+        }
     }
 }
 
@@ -400,8 +416,8 @@ int main(int ac, char **av) {
 
     //test_pp();
     //test_clear();
-    //test_buffers();
-    test_multiarrays();
+    test_buffers();
+    //test_multiarrays();
     //test_files();
     //test_compression();
     //test_image2();

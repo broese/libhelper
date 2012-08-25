@@ -6,18 +6,8 @@
 int pollarray_add(pollarray * pa, pollgroup * pg, int fd, short mode, void * data) {
     int i = pa->num;
 
-    printf("here: %s:%d\n",__func__,__LINE__);
-
-    RESIZE_SIZE(size, pa->num, 1, DEFAULT_PA_GRAN) {
-        printf("here: %s:%d size=%d\n",__func__,__LINE__,size);
-        RESIZE(pa->files,size);
-        RESIZE(pa->p,size);
-        RESIZE(pa->data,size);
-        RESIZE(pa->group,size);
-    } RESIZE_SIZE_FOOT(pa->num,1);
+    ARRAYS_ADDG(pa->num,1,DEFAULT_PA_GRAN,pa->files,pa->p,pa->data,pa->group);
     
-    printf("here: %s:%d\n",__func__,__LINE__);
-
     pa->files[i] = NULL;
     pa->p[i].fd = fd; pa->p[i].events = mode; pa->p[i].revents = 0;
     pa->data[i] = data;
@@ -26,20 +16,7 @@ int pollarray_add(pollarray * pa, pollgroup * pg, int fd, short mode, void * dat
     // resize arrays in the associated pollgroup
     int j = pg->num;
 
-    printf("here: %s:%d\n",__func__,__LINE__);
-
-    RESIZE_SIZE(size, pg->num, 1, DEFAULT_PA_GRAN) {
-        printf("here: %s:%d gsize=%d\n",__func__,__LINE__,size);
-        RESIZE(pg->rfds, size);
-        RESIZE(pg->wfds, size);
-        RESIZE(pg->rfiles, size);
-        RESIZE(pg->wfiles, size);
-        RESIZE(pg->rdata, size);
-        RESIZE(pg->wdata, size);
-    } RESIZE_SIZE_FOOT(pg->num,1);
-
-    printf("here: %s:%d\n",__func__,__LINE__);
-
+    ARRAYS_ADDG(pg->num,1,DEFAULT_PA_GRAN,pg->r,pg->w,pg->e);
 
     return i;
 }
@@ -51,83 +28,74 @@ int pollarray_add_file(pollarray * pa, pollgroup * pg, FILE *fd, short mode, voi
     return i;
 }
 
-// remove the 
-int pollarray_remove(pollarray * pa, int fd) {
+////////////////////////////////////////////////////////////////////////////////
+
+int pollarray_find(pollarray * pa, int fd) {
     int i;
-    for(i=0; i<pa->num; i++)
-        if (pa->p[i].fd == fd) {
-            pollgroup * pg = pa->group[i];
-            if (i<pa->num-1) {
-                // this element is not at the end of list, need to move other elements
-                ARRAY_DELETE(struct pollfd, pa->p, pa->num, i);
-                ARRAY_DELETE(FILE *, pa->files, pa->num, i);
-                ARRAY_DELETE(void *, pa->data, pa->num, i);
-                ARRAY_DELETE(pollgroup *, pa->group, pa->num, i);
-            }
-            pa->num--;
-
-            //TODO: resize the pollgroup properly - although it makes little sense
-            pg->num--;
-            pg->rnum=0; pg->wnum=0; // invalidate array contents in the pollgroup
-
+    for (i=0; i<pa->num; i++)
+        if (pa->p[i].fd == fd)
             return i;
-        }
-
     return -1;
+}
+
+int pollarray_find_file(pollarray * pa, FILE *fd) {
+    return pollarray_find(pa,fileno(fd));
+}
+////////////////////////////////////////////////////////////////////////////////
+
+// remove the file descriptor from the pollarray
+int pollarray_remove(pollarray * pa, int fd) {
+    int i = pollarray_find(pa,fd);
+    if (i<0) return -1;
+
+    // get the group before it is removed
+    pollgroup * pg = pa->group[i];
+
+    // delete the elements in all arrays at this index
+    ARRAY_DELETE_NU(pa->p, pa->num, i);
+    ARRAY_DELETE_NU(pa->files, pa->num, i);
+    ARRAY_DELETE_NU(pa->data, pa->num, i);
+    ARRAY_DELETE_NU(pa->group, pa->num, i);
+    pa->num--;
+
+    // resize the pollgroup
+    pg->num--;
+
+    // invalidate pollgroup
+    pg->rn = pg->wn = pg->en = 0;
+
+    return 0;
 }
 
 int pollarray_remove_file(pollarray *pa, FILE *fd) {
     return pollarray_remove(pa, fileno(fd));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 int evfile_poll(pollarray *pa, int timeout) {
-    printf("here: %s:%d\n",__func__,__LINE__);
     if (timeout<0) timeout = DEFAULT_POLL_TIMEOUT;
 
+    // clear all pollgroups
+    //FIXME: optimize?
+    for (i=0; i<pa->num; i++) {
+        pollgroup *pg = pa->group[i];
+        pg->rn = pg->wn = pg->en = 0;
+    }
+
+    // poll the entire pollarray
     int sel = poll(pa->p, pa->num, timeout);
     if (sel<0) LH_ERROR(-1, "poll on %d descriptors failed", pa->num);
     if (sel == 0) return 0;
 
-    printf("here: %s:%d\n",__func__,__LINE__);
+
+    // distribute the events
     int i;
-
-    // clear all groups
-    //FIXME: optimize?
-    for (i=0; i<pa->num; i++) {
-        pa->group[i]->rnum = 0;
-        pa->group[i]->wnum = 0;
-    }
-
-    printf("here: %s:%d\n",__func__,__LINE__);
-    // distribute events
     for (i=0; i<pa->num; i++) {
         pollgroup * pg = pa->group[i];
-        printf("here: %s:%d i=%d pg=%08p\n",__func__,__LINE__,i,pg);
-        printf("Dumping pg:\n"
-               " num=%d\n"
-               " rfds=%08p\n"
-               " rfiles=%08p\n"
-               " rdata=%08p\n"
-               " rnum=%d\n",
-               pg->num,pg->rfds,pg->rfiles,pg->rdata,pg->rnum);
-        if (pa->p[i].revents & POLLIN) {
-            printf("here: %s:%d\n",__func__,__LINE__);
-            pg->rfds[pg->rnum]   = pa->p[i].fd;
-            pg->rfiles[pg->rnum] = pa->files[i];
-            pg->rdata[pg->rnum]  = pa->data[i];
-            pg->rnum++;
-            printf("here: %s:%d\n",__func__,__LINE__);
-        }
-        if (pa->p[i].revents & POLLOUT) {
-            printf("here: %s:%d\n",__func__,__LINE__);
-            pg->wfds[pg->wnum]   = pa->p[i].fd;
-            pg->wfiles[pg->wnum] = pa->files[i];
-            pg->wdata[pg->wnum]  = pa->data[i];
-            pg->wnum++;
-            printf("here: %s:%d\n",__func__,__LINE__);
-        }
+        if (pa->p[i].revents & POLLIN)                     pg->r[pg->rn++] = i;
+        if (pa->p[i].revents & POLLOUT)                    pg->w[pg->wn++] = i;
+        if (pa->p[i].revents & (POLLERR|POLLHUP|POLLNVAL)) pg->e[pg->en++] = i;
     }
-    printf("here: %s:%d\n",__func__,__LINE__);
     return 0;
 }
-
