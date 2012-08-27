@@ -111,7 +111,7 @@ void test_buffers() {
     printf("Total length: %d\n%s\n",n-1,str);
 #endif
 
-#if 1
+#if 0
     ARRAY(face,f,nf);
     ARRAY_ALLOCG(f, nf, 3, 4);
 
@@ -177,9 +177,29 @@ void test_buffers() {
 
 #endif
 
+#if 0
+#define TEST_SORTF(a,b) { char A=a, B=b; printf("A=%d B=%d SORTF=%d\n",a,b,SORTF_SI(&A,&B,(void *)0x01000000)); }
+
+    TEST_SORTF(2,3);
+    TEST_SORTF(2,2);
+    TEST_SORTF(2,1);
+#endif
+
 
 #if 1
-    
+    printf("-------------------\n");
+    char *cstr = "ABQRSTUJKLVWFGCDEMNOPHIXYZ";
+    ARRAY(char,ss,len);
+    ARRAY_ALLOCG(ss,len,26,16);
+
+    memcpy(ss,cstr,26);
+    printf("ss=%08p len=%d >%s<\n",ss,len,ss);
+    hexdump(ss, 32);
+
+    SORTD(ss,26,*ss);
+    printf("ss=%08p len=%d >%s<\n",ss,len,ss);
+    hexdump(ss, 32);
+
 #endif
 
 }
@@ -358,6 +378,7 @@ void test_server() {
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#if 0
 void test_event() {
     int ss = sock_server_ipv4_tcp_any(23456);
     if (ss<0) return;
@@ -411,6 +432,7 @@ void test_event() {
         }
     }
 }
+#endif
 
 int main(int ac, char **av) {
 

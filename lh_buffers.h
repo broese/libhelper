@@ -78,8 +78,67 @@ helper macros used in calculation of granular sizes
 ////////////////////////////////////////////////////////////////////////////////
 // Sorting macros
 
-//#define SORT(ptr, cnt, elem) qsort(ptr, cnt, sizeof(*ptr), 
 
+#ifdef __linux
+
+#define SORTF_(name,type,op)                                            \
+    static int SORTF_##name                                             \
+    (const void * a, const void * b, void * arg) {                      \
+        int offset = (int)arg & 0xffffff;                               \
+        int size   = (unsigned int)arg >> 24;                           \
+        printf("size=%d offset=%d\n",size,offset);                      \
+        switch (size) {                                                 \
+        case 1: {                                                       \
+            type ## int8_t * A = (type ## int8_t *)(((char *)a)+offset); \
+            type ## int8_t * B = (type ## int8_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        case 2: {                                                       \
+            type ## int16_t * A = (type ## int16_t *)(((char *)a)+offset); \
+            type ## int16_t * B = (type ## int16_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        case 4: {                                                       \
+            type ## int32_t * A = (type ## int32_t *)(((char *)a)+offset); \
+            type ## int32_t * B = (type ## int32_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        case 8: {                                                       \
+            type ## int64_t * A = (type ## int64_t *)(((char *)a)+offset); \
+            type ## int64_t * B = (type ## int64_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        default:                                                        \
+            printf("Unsipported size %d\n",size);                       \
+        }                                                               \
+    }
+
+SORTF_(SI,,)
+SORTF_(UI,u,)
+SORTF_(SD,,-)
+SORTF_(UD,u,-)
+
+
+#if 0
+static int SORTF_1S_INC(const void * a, const void * b, void * arg) {
+    int offset = (int)arg;
+    char * A = ((char *)a)+offset;
+    char * B = ((char *)b)+offset;
+    return (*A < *B) ? -1 : ( *A > *B);
+}
+#endif
+
+#define SORT_(ptr, cnt, offset, size, suffix) qsort_r(ptr, cnt, sizeof(*ptr), SORTF_ ## suffix, (void *)((((size)&0xff)<<24)+((offset)&0xffffff)))
+#define SORT(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), SI)
+#define SORTD(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), SD)
+#define SORTU(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), UI)
+#define SORTUD(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), UD)
+
+#else
+
+#define SORT(ptr, cnt, elem) printf("qsort_r not available\n");
+
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////

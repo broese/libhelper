@@ -74,6 +74,8 @@ int pollarray_remove_file(pollarray *pa, FILE *fd) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int evfile_poll(pollarray *pa, int timeout) {
+    int i;
+
     if (timeout<0) timeout = DEFAULT_POLL_TIMEOUT;
 
     // clear all pollgroups
@@ -90,7 +92,6 @@ int evfile_poll(pollarray *pa, int timeout) {
 
 
     // distribute the events
-    int i;
     for (i=0; i<pa->num; i++) {
         pollgroup * pg = pa->group[i];
         if (pa->p[i].revents & POLLIN)                     pg->r[pg->rn++] = i;
