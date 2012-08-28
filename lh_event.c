@@ -73,6 +73,7 @@ int pollarray_remove_file(pollarray *pa, FILE *fd) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// poll all file descriptors in a poll array and update the associated poll groups
 int evfile_poll(pollarray *pa, int timeout) {
     int i;
 
@@ -99,4 +100,42 @@ int evfile_poll(pollarray *pa, int timeout) {
         if (pa->p[i].revents & (POLLERR|POLLHUP|POLLNVAL)) pg->e[pg->en++] = i;
     }
     return 0;
+}
+
+// read as much data into the buffer as possible, resizing it if needed
+// int fd : file descriptor to read from
+// uint8_t ** data : pointer to buffer pointer
+// len : current size of data in the buffer, the data will be stored from this position
+// maxread : maximum amount of data to read at once - it's a soft limit
+// evfile_read uses it's own gran value, no need to arrange it with the user
+
+#define EVFILE_READ_GRAN 65536
+
+ssize_t evfile_read(int fd, uint8_t ** data, ssize_t *len, ssize_t maxread) {
+    printf("%s:%d\n",__func__,__LINE__);
+
+    // how many bytes to attempt to read next?
+    ssize_t nextread = GRANREST(len, EVFILE_READ_GRAN) + EVFILE_READ_GRAN;
+
+    ssize_t allocated = *len;
+    ssize_t pos = *len;     // out current read position
+
+    ssize_t totalread = 0; // total read bytes, for return value only
+
+    printf("%s:%d\n",__func__,__LINE__);
+    while (totalread < maxread) {
+        // make room in the buffer
+        ARRAY_ADDG(*data, allocated, nextread, EVFILE_READ_GRAN);
+        ssize_t rbytes = read(fd, *data+pos, nextread);
+
+        if (rbytes < 0) break; // fatal error occured when reading
+        totalread += rbytes;
+        if (rbytes < nextread) break; // less than expected - EOF or wouldblock
+
+        nextread = EVFILE_READ_GRAN;
+    }
+
+    printf("%s:%d\n",__func__,__LINE__);
+    *len += totalread;
+    return totalread;
 }

@@ -3,6 +3,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+
 #include "lh_buffers.h"
 #include "lh_files.h"
 #include "lh_compress.h"
@@ -116,7 +123,7 @@ void test_buffers() {
     ARRAY_ALLOCG(f, nf, 3, 4);
 
     f[0].a = 1; f[0].b = 2; f[0].c = 3;
-    f[1].a = 11; f[1].b = 12; f[1].c = 13;
+    f[1].a = 11; f[1].b = 12; f[1].c = 13;EVFILE_READ_GRAN
     f[2].a = 21; f[2].b = 22; f[2].c = 23;
 
     printf("f=%08p nf=%d\n",f,nf);
@@ -374,11 +381,12 @@ void test_server() {
     if (ss >= 0) sleep(1000);
 }
 
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+typedef struct {
+    uint8_t * data;
+    ssize_t len;
+} buffer_t;
 
-#if 0
+#if 1
 void test_event() {
     int ss = sock_server_ipv4_tcp_any(23456);
     if (ss<0) return;
@@ -396,39 +404,61 @@ void test_event() {
 
     int stay = 1, i;
     while(stay) {
-        evfile_poll(&pa, 100);
+        printf("%s:%d\n",__func__,__LINE__);
+        evfile_poll(&pa, 1000);
 
         // handle server requests
         for(i=0; i<sg.rn; i++) {
             struct sockaddr_in cadr;
             int size = sizeof(cadr);
-            int cl = accept(sg.rfds[i], (struct sockaddr *)&cadr, &size);
+            int cl = accept(pa.p[sg.r[i]].fd, (struct sockaddr *)&cadr, &size);
             if (cl < 0) printf("Failed to accept, %s\n",strerror(errno));
             printf("Accepted from %s:%d\n",inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
+
+            if (fcntl(cl, F_SETFL, O_NONBLOCK) < 0) printf("Failed to set non-block, %s\n",strerror(errno));
 
             FILE * csock = fdopen(cl, "r+");
             if (!csock) printf("Failed to fdopen, %s\n",strerror(errno));
             fprintf(csock, "Welcome to the leet server\n");
             fflush(csock);
 
-            pollarray_add_file(&pa, &cg, csock, MODE_RW, NULL);
+            ALLOC(buffer_t,buf);
+
+            pollarray_add_file(&pa, &cg, csock, MODE_R, buf);
             printf("Added successfully\n");
         }
 
         // handle client requests
         for(i=0; i<cg.rn; i++) {
-            FILE * fd = cg.rfiles[i];
-            char buf[1024];
-            ssize_t len = fread(buf, 1, 100, fd);
-            fprintf(fd, "Read %d bytes\n",len);
-            fflush(fd);
+            printf("%s:%d\n",__func__,__LINE__);
+            int idx = cg.r[i];
+            FILE * fd = pa.files[idx];
+            buffer_t * b = pa.data[idx];
+            ssize_t rb = evfile_read(fileno(fd), &b->data, &b->len, 1048576);
+            printf("%s:%d rb=%d\n",__func__,__LINE__,rb);
+            if (rb > 0) {
+                fprintf(fd, "Read %d bytes\n",rb);
+                fflush(fd);
+                b->len = 0;
+            }
+            printf("%s:%d\n",__func__,__LINE__);
         }
 
         for(i=0; i<cg.en; i++) {
-            FILE * fd = cg.efiles[i];
+            printf("%s:%d\n",__func__,__LINE__);
+            int idx = cg.e[i];
+            FILE * fd = pa.files[idx];
+            buffer_t * b = pa.data[idx];
+            printf("%s:%d\n",__func__,__LINE__);
+            if (b->data) free(b->data);
+            free(b);
             fclose(fd);
-            printf("Closed FILE %d\n",cg.efds[i]);
+            printf("%s:%d\n",__func__,__LINE__);
+            printf("Closed FILE %d\n",pa.p[cg.e[i]].fd);
             pollarray_remove_file(&pa, fd);
+            i--;
+            printf("%s:%d\n",__func__,__LINE__);
+            exit(1);
         }
     }
 }
@@ -438,7 +468,7 @@ int main(int ac, char **av) {
 
     //test_pp();
     //test_clear();
-    test_buffers();
+    //test_buffers();
     //test_multiarrays();
     //test_files();
     //test_compression();
@@ -446,7 +476,7 @@ int main(int ac, char **av) {
     //test_stream();
 
     //test_server();
-    //test_event();
+    test_event();
 
     return 0;
 }

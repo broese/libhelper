@@ -54,4 +54,4 @@ int pollarray_find(pollarray * pa, int fd);
 int pollarray_find_file(pollarray * pa, FILE *fd);
 
 int evfile_poll(pollarray *pa, int timeout);
-
+ssize_t evfile_read(int fd, uint8_t ** data, ssize_t *len, ssize_t maxread);

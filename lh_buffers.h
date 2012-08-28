@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -24,7 +25,7 @@ preprocessor own limit. This also does not work for the empty list - returns 1
 helper macros used in calculation of granular sizes
 */
 // calculate the number of remaining elements from 'num' to the next 'gran' boundary
-#define GRANREST(num,gran) ((gran)-((unsigned)num))%(gran)
+#define GRANREST(num,gran) ((gran)-((unsigned)(num)))%(gran)
 // calculate the next 'gran' boundary after 'num'
 #define GRANSIZE(num,gran) ((num)+GRANREST(num,gran))
 
@@ -169,13 +170,13 @@ additionally specified in the granular versions of the macros
 #define ARRAY_EXTENDG(ptr,cnt,num,gran) {                               \
         if (GRANSIZE(num,gran) > GRANSIZE(cnt,gran))                    \
             RESIZE(ptr,GRANSIZE(num,gran));                             \
-        if (GRANSIZE(num,gran) > cnt)                                   \
-            CLEAR_RANGE(ptr, cnt, GRANSIZE(num,gran)-cnt);              \
+        if (GRANSIZE(num,gran) > (cnt))                                 \
+            CLEAR_RANGE(ptr, cnt, GRANSIZE(num,gran)-(cnt));            \
         cnt=num;                                                        \
     }
 
 // add 'num' elements
-#define ARRAY_ADDG(ptr,cnt,num,gran)     ARRAY_EXTENDG(ptr,cnt,cnt+num,gran)
+#define ARRAY_ADDG(ptr,cnt,num,gran)     ARRAY_EXTENDG(ptr,cnt,((cnt)+(num)),gran)
 
 // non-granular allocation - wrapper macros
 #define ARRAY_ALLOC(ptr,cnt,num)         ARRAY_ALLOCG(ptr,cnt,num,1)
