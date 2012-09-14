@@ -331,6 +331,14 @@ void test_image2() {
     printf("Exported size : %zd\n",osize);
 }
 
+void test_image_resize() {
+    lhimage *img = import_png_file("photo.png");
+    printf("Imported a %dx%d image\n",img->width,img->height);
+    resize_image(img,img->width+50,img->height+50,20,-20,0x00ff00ff);
+    ssize_t osize = export_png_file(img, "photo_resized.png");
+    printf("Exported size : %zd\n",osize);
+}
+
 void test_stream() {
 
 #if 0
@@ -473,10 +481,11 @@ int main(int ac, char **av) {
     //test_files();
     //test_compression();
     //test_image2();
+    test_image_resize();
     //test_stream();
 
     //test_server();
-    test_event();
+    //test_event();
 
     return 0;
 }

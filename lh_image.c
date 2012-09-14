@@ -35,6 +35,32 @@ void destroy_image(lhimage * img) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void resize_image(lhimage *img, int newwidth, int newheight, int offx, int offy, uint32_t bgcolor) {
+    // allocate the new image buffer
+    ALLOCN(uint32_t,newdata,newwidth*newheight);
+
+    // fill it with the background color
+    uint32_t size = newwidth*newheight;
+    int i;
+    for (i=0; i<size; i++) newdata[i] = bgcolor;
+
+    // copy the old image over it
+    int x,y;
+    for(x=0; x<img->width && x+offx < newwidth; x++) {
+        for(y=0; y<img->height && y+offy < newheight; y++) {
+            if (x+offx >= 0 && y+offy >= 0)
+                newdata[(x+offx)+newwidth*(y+offy)] = IMGDOT(img,x,y);
+        }
+    }
+
+    free(img->data);
+    img->data = newdata;
+    img->width = newwidth;
+    img->height = newheight;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 typedef struct {
     unsigned char * buffer;
     ssize_t size;
