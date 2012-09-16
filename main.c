@@ -334,7 +334,10 @@ void test_image2() {
 void test_image_resize() {
     lhimage *img = import_png_file("photo.png");
     printf("Imported a %dx%d image\n",img->width,img->height);
-    resize_image(img,img->width+50,img->height+50,20,-20,0x00ff00ff);
+    int i;
+    for(i=0; i<100; i++) {
+        resize_image(img,img->width+50,img->height+50,20,20,0x00ff00ff);
+    }
     ssize_t osize = export_png_file(img, "photo_resized.png");
     printf("Exported size : %zd\n",osize);
 }
