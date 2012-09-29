@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -23,6 +24,7 @@ preprocessor own limit. This also does not work for the empty list - returns 1
 
 /*
 helper macros used in calculation of granular sizes
+//FIXME: these are limited to 32 bit
 */
 // calculate the number of remaining elements from 'num' to the next 'gran' boundary
 #define GRANREST(num,gran) ((gran)-((unsigned)(num)))%(gran)
@@ -34,17 +36,18 @@ helper macros used in calculation of granular sizes
 ////////////////////////////////////////////////////////////////////////////////
 // Clearing macros
 
-// clear a single object (pointer)
-#define CLEARP(ptr) CLEARN(ptr,1)
-
 // clear a single object (non-pointer)
 #define CLEAR(obj) CLEARP(&(obj))
 
-// clear a set of objects (pointer)
+// clear a single object (pointer)
+#define CLEARP(ptr) CLEARN(ptr,1)
+
+// clear an array of N objects (pointer)
 #define CLEARN(ptr,N) memset((ptr), 0, sizeof(*(ptr))*(N))
 
-// clear a number 'num' elements in the array
+// clear a number 'num' elements in the array starting with 'from'
 #define CLEAR_RANGE(ptr, from, num) if ( num > 0 ) CLEARN(ptr+from, num)
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +61,7 @@ helper macros used in calculation of granular sizes
 #define ALLOC(type,name) ALLOCN(type,name,1)
 
 // allocate a byte buffer of 'size' bytes
-#define ALLOCB(name,size) ALLOCN(unsigned char,name,size)
+#define ALLOCB(name,size) ALLOCN(uint8_t,name,size)
 
 // allocate 'num' elements of 'type'
 #define ALLOCN(type,name,num) type * ALLOCNE(name,num)
@@ -76,70 +79,6 @@ helper macros used in calculation of granular sizes
     ptr = malloc((num)*sizeof(*ptr));           \
     CLEARN(ptr,num);
 
-////////////////////////////////////////////////////////////////////////////////
-// Sorting macros
-
-
-#ifdef __linux
-
-#define SORTF_(name,type,op)                                            \
-    static int SORTF_##name                                             \
-    (const void * a, const void * b, void * arg) {                      \
-        int offset = (int)arg & 0xffffff;                               \
-        int size   = (unsigned int)arg >> 24;                           \
-        printf("size=%d offset=%d\n",size,offset);                      \
-        switch (size) {                                                 \
-        case 1: {                                                       \
-            type ## int8_t * A = (type ## int8_t *)(((char *)a)+offset); \
-            type ## int8_t * B = (type ## int8_t *)(((char *)b)+offset); \
-            return op ((*A < *B) ? -1 : (*B < *A));                     \
-        }                                                               \
-        case 2: {                                                       \
-            type ## int16_t * A = (type ## int16_t *)(((char *)a)+offset); \
-            type ## int16_t * B = (type ## int16_t *)(((char *)b)+offset); \
-            return op ((*A < *B) ? -1 : (*B < *A));                     \
-        }                                                               \
-        case 4: {                                                       \
-            type ## int32_t * A = (type ## int32_t *)(((char *)a)+offset); \
-            type ## int32_t * B = (type ## int32_t *)(((char *)b)+offset); \
-            return op ((*A < *B) ? -1 : (*B < *A));                     \
-        }                                                               \
-        case 8: {                                                       \
-            type ## int64_t * A = (type ## int64_t *)(((char *)a)+offset); \
-            type ## int64_t * B = (type ## int64_t *)(((char *)b)+offset); \
-            return op ((*A < *B) ? -1 : (*B < *A));                     \
-        }                                                               \
-        default:                                                        \
-            printf("Unsipported size %d\n",size);                       \
-        }                                                               \
-    }
-
-SORTF_(SI,,)
-SORTF_(UI,u,)
-SORTF_(SD,,-)
-SORTF_(UD,u,-)
-
-
-#if 0
-static int SORTF_1S_INC(const void * a, const void * b, void * arg) {
-    int offset = (int)arg;
-    char * A = ((char *)a)+offset;
-    char * B = ((char *)b)+offset;
-    return (*A < *B) ? -1 : ( *A > *B);
-}
-#endif
-
-#define SORT_(ptr, cnt, offset, size, suffix) qsort_r(ptr, cnt, sizeof(*ptr), SORTF_ ## suffix, (void *)((((size)&0xff)<<24)+((offset)&0xffffff)))
-#define SORT(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), SI)
-#define SORTD(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), SD)
-#define SORTU(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), UI)
-#define SORTUD(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), UD)
-
-#else
-
-#define SORT(ptr, cnt, elem) printf("qsort_r not available\n");
-
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +95,7 @@ additionally specified in the granular versions of the macros
 #define RESIZE(ptr, num) ptr = realloc(ptr, num*sizeof(*ptr));
 
 // wrapped macro for declaration of such arrays
-#define ARRAY(type,ptr,cnt) type * ptr; int cnt;
+#define ARRAY(type,ptr,cnt) type * ptr=NULL; int cnt=0;
 
 // allocate array with 'num' elements, place the pointer to 'ptr' and
 // element count to 'cnt'
@@ -168,12 +107,13 @@ additionally specified in the granular versions of the macros
 // extend the allocated array to 'num' elements
 // can be used for downsizing the array as well
 #define ARRAY_EXTENDG(ptr,cnt,num,gran) {                               \
-        if (GRANSIZE(num,gran) > GRANSIZE(cnt,gran))                    \
-            RESIZE(ptr,GRANSIZE(num,gran));                             \
-        if (GRANSIZE(num,gran) > (cnt))                                 \
-            CLEAR_RANGE(ptr, cnt, GRANSIZE(num,gran)-(cnt));            \
+        if (GRANSIZE((num),(gran)) > GRANSIZE((cnt),(gran)))            \
+            RESIZE((ptr),GRANSIZE((num),(gran)));                       \
+        if (GRANSIZE((num),gran) > (cnt))                               \
+            CLEAR_RANGE((ptr), (cnt), (num)-(cnt));                     \
         cnt=num;                                                        \
     }
+//            CLEAR_RANGE(ptr, cnt, GRANSIZE(num,gran)-(cnt));  \
 
 // add 'num' elements
 #define ARRAY_ADDG(ptr,cnt,num,gran)     ARRAY_EXTENDG(ptr,cnt,((cnt)+(num)),gran)
@@ -256,6 +196,72 @@ TODO: resizing does not zero the new elements! Make it similar to ARRAY_EXTEND
 #define ARRAYS_ADD(cnt,inc,...)         ARRAYS_EXTENDG(cnt,cnt+inc,1,__VA_ARGS__)
 
 //TODO: ARRAYS_DELETE
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Sorting macros
+
+
+#ifdef __linux
+
+#define SORTF_(name,type,op)                                            \
+    static int SORTF_##name                                             \
+    (const void * a, const void * b, void * arg) {                      \
+        int offset = (int)arg & 0xffffff;                               \
+        int size   = (unsigned int)arg >> 24;                           \
+        printf("size=%d offset=%d\n",size,offset);                      \
+        switch (size) {                                                 \
+        case 1: {                                                       \
+            type ## int8_t * A = (type ## int8_t *)(((char *)a)+offset); \
+            type ## int8_t * B = (type ## int8_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        case 2: {                                                       \
+            type ## int16_t * A = (type ## int16_t *)(((char *)a)+offset); \
+            type ## int16_t * B = (type ## int16_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        case 4: {                                                       \
+            type ## int32_t * A = (type ## int32_t *)(((char *)a)+offset); \
+            type ## int32_t * B = (type ## int32_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        case 8: {                                                       \
+            type ## int64_t * A = (type ## int64_t *)(((char *)a)+offset); \
+            type ## int64_t * B = (type ## int64_t *)(((char *)b)+offset); \
+            return op ((*A < *B) ? -1 : (*B < *A));                     \
+        }                                                               \
+        default:                                                        \
+            printf("Unsipported size %d\n",size);                       \
+        }                                                               \
+    }
+
+SORTF_(SI,,)
+SORTF_(UI,u,)
+SORTF_(SD,,-)
+SORTF_(UD,u,-)
+
+
+#if 0
+static int SORTF_1S_INC(const void * a, const void * b, void * arg) {
+    long offset = (long)arg;
+    char * A = ((char *)a)+offset;
+    char * B = ((char *)b)+offset;
+    return (*A < *B) ? -1 : ( *A > *B);
+}
+#endif
+
+#define SORT_(ptr, cnt, offset, size, suffix) qsort_r(ptr, cnt, sizeof(*ptr), SORTF_ ## suffix, (void *)((((size)&0xff)<<24)+((offset)&0xffffff)))
+#define SORT(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), SI)
+#define SORTD(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), SD)
+#define SORTU(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), UI)
+#define SORTUD(ptr, cnt, elem) SORT_(ptr, cnt, ((char *)&(elem)-(char *)(ptr)), sizeof(elem), UD)
+
+#else
+
+#define SORT(ptr, cnt, elem) printf("qsort_r not available\n");
+
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////

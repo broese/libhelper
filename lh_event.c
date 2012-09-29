@@ -1,5 +1,8 @@
 #include "lh_event.h"
 
+////////////////////////////////////////////////////////////////////////////////
+// Managing Pollarrays
+
 #define DEFAULT_PA_GRAN 4
 
 // add a new file descriptor (int) to the pollarray
@@ -28,8 +31,6 @@ int pollarray_add_file(pollarray * pa, pollgroup * pg, FILE *fd, short mode, voi
     return i;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 int pollarray_find(pollarray * pa, int fd) {
     int i;
     for (i=0; i<pa->num; i++)
@@ -41,7 +42,6 @@ int pollarray_find(pollarray * pa, int fd) {
 int pollarray_find_file(pollarray * pa, FILE *fd) {
     return pollarray_find(pa,fileno(fd));
 }
-////////////////////////////////////////////////////////////////////////////////
 
 // remove the file descriptor from the pollarray
 int pollarray_remove(pollarray * pa, int fd) {
@@ -102,6 +102,58 @@ int evfile_poll(pollarray *pa, int timeout) {
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+int evfile_read_once(int fd, uint8_t *ptr, ssize_t bufsize, ssize_t *len) {
+    ssize_t rlen = bufsize - *len;
+    ssize_t rbytes = read(fd, ptr+(*len), rlen);
+
+    if (rbytes < 0) { // error occured
+        int res = (errno == EAGAIN) ? EVFILE_WAIT : EVFILE_ERROR;
+        LH_ERROR(res, "evfile_read_once: failed to read from fd=%d : %s\n",fd,strerror(errno));
+    }
+
+    if (rbytes == 0) { // no error, but end of file
+        return EVFILE_EOF;
+    }
+
+    *len += rbytes;
+
+    if (rbytes < rlen) { // not enough data to read?
+        return EVFILE_WAIT;
+    }
+
+    return EVFILE_OK;
+}
+
+int evfile_read(int fd, uint8_t **ptr, ssize_t *len, ssize_t maxread) {
+    // note - maxlen is aligned to BUFGRAN and so it may exceed the maxread
+    // keep in mind that maxread is a soft limit - we will limit the reading
+    // within a reasonable range of maxlen
+    if (maxread<=0) maxread = EVFILE_BUFGRAN;
+    int maxlen = *len + maxread;
+    maxlen = GRANSIZE(maxlen, EVFILE_BUFGRAN);
+
+    int res = EVFILE_OK;
+
+    do {
+        ssize_t nextgoal = GRANSIZE(*len, EVFILE_BUFGRAN) + EVFILE_BUFGRAN;
+        if (nextgoal > maxlen) nextgoal = maxlen;
+
+        ssize_t curlen = *len;
+        ARRAY_EXTENDG(*ptr, curlen, nextgoal, EVFILE_BUFGRAN);
+        res = evfile_read_once(fd, *ptr, curlen, len);
+    } while (res == EVFILE_OK && *len < maxlen );
+
+    return res;
+}
+
+
+
+
+
+
+#if 0
 // read as much data into the buffer as possible, resizing it if needed
 // int fd : file descriptor to read from
 // uint8_t ** data : pointer to buffer pointer
@@ -112,10 +164,15 @@ int evfile_poll(pollarray *pa, int timeout) {
 #define EVFILE_READ_GRAN 65536
 
 ssize_t evfile_read(int fd, uint8_t ** data, ssize_t *len, ssize_t maxread) {
-    printf("%s:%d\n",__func__,__LINE__);
+    printf("%s:%d fd=%d data=%08x len=%d maxread=%d\n",__func__,__LINE__,fd,data,*len,maxread);
 
     // how many bytes to attempt to read next?
-    ssize_t nextread = GRANREST(len, EVFILE_READ_GRAN) + EVFILE_READ_GRAN;
+    // we try to read to the next granularity boundary, plus another granularity
+    // block. I.e. if the buffer already contains 40000 bytes, we'll try
+    // to read up to the 131072 bytes (128K) bjoundary, so nextread will be
+    // 91072 bytes
+    ssize_t nextread = GRANREST(*len, EVFILE_READ_GRAN) + EVFILE_READ_GRAN;
+    printf("%s:%d len=%d nextread=%d\n",__func__,__LINE__,*len,nextread);
 
     ssize_t allocated = *len;
     ssize_t pos = *len;     // out current read position
@@ -127,6 +184,7 @@ ssize_t evfile_read(int fd, uint8_t ** data, ssize_t *len, ssize_t maxread) {
         // make room in the buffer
         ARRAY_ADDG(*data, allocated, nextread, EVFILE_READ_GRAN);
         ssize_t rbytes = read(fd, *data+pos, nextread);
+        printf("rbytes=%d errno=%d %s\n",rbytes,errno,strerror(errno));
 
         if (rbytes < 0) break; // fatal error occured when reading
         totalread += rbytes;
@@ -135,7 +193,8 @@ ssize_t evfile_read(int fd, uint8_t ** data, ssize_t *len, ssize_t maxread) {
         nextread = EVFILE_READ_GRAN;
     }
 
-    printf("%s:%d\n",__func__,__LINE__);
     *len += totalread;
+    printf("%s:%d len=%d totalread=%d\n",__func__,__LINE__,len,totalread);
     return totalread;
 }
+#endif

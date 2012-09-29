@@ -42,3 +42,22 @@ int sock_server_ipv4_udp(uint32_t ip, uint16_t port) {
     return s;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+// make a TCP connection to a remote machine
+int sock_client_ipv4_tcp(uint32_t ip, uint16_t port) {
+    int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s < 0) LH_ERROR(-1, "%s: failed to create socket PF_INET/SOCK_STREAM/IPPROTO_TCP",__func__);
+
+    struct sockaddr_in sa = {
+        .sin_family = AF_INET,
+        .sin_port   = htons(port),
+        .sin_addr.s_addr = htonl(ip)
+    };
+
+    if (connect(s, (struct sockaddr *)&sa, sizeof(sa)) != 0) {
+        LH_ERROR(-1, "%s: bind failed", __func__);
+    }
+
+    return s;
+}

@@ -414,9 +414,14 @@ void test_event() {
     pollarray_add(&pa, &sg, ss, MODE_R, NULL);
 
     int stay = 1, i;
-    while(stay) {
-        printf("%s:%d\n",__func__,__LINE__);
+    int maxcount = 100;
+    while(stay && maxcount>0) {
         evfile_poll(&pa, 1000);
+        for(i=0; i<cg.en; i++) {
+            int idx = cg.e[i];
+            FILE * file = pa.files[idx];
+            printf("Error on client %d, fd=%d\n",idx, fileno(file));
+        }
 
         // handle server requests
         for(i=0; i<sg.rn; i++) {
@@ -436,44 +441,116 @@ void test_event() {
             ALLOC(buffer_t,buf);
 
             pollarray_add_file(&pa, &cg, csock, MODE_R, buf);
-            printf("Added successfully\n");
         }
 
         // handle client requests
         for(i=0; i<cg.rn; i++) {
-            printf("%s:%d\n",__func__,__LINE__);
             int idx = cg.r[i];
             FILE * fd = pa.files[idx];
             buffer_t * b = pa.data[idx];
-            ssize_t rb = evfile_read(fileno(fd), &b->data, &b->len, 1048576);
-            printf("%s:%d rb=%d\n",__func__,__LINE__,rb);
-            if (rb > 0) {
-                fprintf(fd, "Read %d bytes\n",rb);
-                fflush(fd);
-                b->len = 0;
+            //uint8_t buf[256];
+            //ssize_t len = 0;
+
+            //int res = evfile_read_once(fileno(fd),buf,sizeof(buf),&len);
+            int res = evfile_read(fileno(fd),&b->data,&b->len,128);
+            printf("evfile_read returned %d, len=%d fd=%d\n",res,b->len,fileno(fd));
+            hexdump(b->data,b->len);
+
+            int kill=0;
+            switch (res) {
+            case EVFILE_OK:
+                printf("Have read as much as possible, buffer is full, processing %d bytes\n",b->len);
+                break;
+            case EVFILE_WAIT:
+                printf("No more input data for now, processing %d bytes\n",b->len);
+                break;
+            case EVFILE_EOF:
+                printf("End of file, removing client %d and processing %d bytes\n",fileno(fd),b->len);
+                kill=1;
+                break;
+            case EVFILE_ERROR:
+                printf("Error occured, removing client %d\n",fileno(fd));
+                kill=1;
+                break;
             }
-            printf("%s:%d\n",__func__,__LINE__);
+
+            if (kill) {
+                buffer_t * b = pa.data[idx];
+                printf("buffer : %08p\n",b);
+                if (b->data) free(b->data);
+                free(b);
+                pollarray_remove_file(&pa, fd);
+                fclose(fd);
+            }
+
         }
 
+        if (cg.en > 0) {
+            printf("EV error\n");
+            exit(1);
+        }
+
+#if 0
         for(i=0; i<cg.en; i++) {
+            exit(1);
             printf("%s:%d\n",__func__,__LINE__);
             int idx = cg.e[i];
             FILE * fd = pa.files[idx];
             buffer_t * b = pa.data[idx];
-            printf("%s:%d\n",__func__,__LINE__);
+            printf("%s:%d file=%08p fd=%d\n",__func__,__LINE__,fd,fileno(fd));
             if (b->data) free(b->data);
-            free(b);
+            //free(b);
             fclose(fd);
             printf("%s:%d\n",__func__,__LINE__);
             printf("Closed FILE %d\n",pa.p[cg.e[i]].fd);
             pollarray_remove_file(&pa, fd);
-            i--;
+            //i--;
             printf("%s:%d\n",__func__,__LINE__);
-            exit(1);
+            //exit(1);
         }
+#endif
     }
 }
 #endif
+
+#include <time.h>
+
+void benchmark_allocation(int narrays, int gran) {
+    srand(time(NULL));
+
+    ALLOCN(uint8_t *,ptr,narrays);
+    ALLOCN(int,cnt,narrays);
+    uint8_t * oldptr;
+
+    int n=0;
+
+    int i,j;
+    for(i=0; i<100000; i++) {
+        for (j=0; j<narrays; j++) {
+            oldptr = ptr[j];
+            int inc = rand()&0xff;
+            ARRAY_ADDG(ptr[j],cnt[j],inc,gran);
+            if (ptr[j] != oldptr) n++;
+        }
+    }
+
+#if 0
+    ARRAY(uint8_t,ptr,cnt);
+    uint8_t *oldptr;
+
+    int i,n=0;
+    for(i=1; i<1000000000; i++) {
+        oldptr = ptr;
+        ARRAY_EXTEND(ptr,cnt,i);
+        if (ptr != oldptr) {
+            printf("%i => %08x\n",i,ptr);
+            n++;
+        }
+    }
+#endif
+
+    printf("Total: %d\n",n);
+}
 
 int main(int ac, char **av) {
 
@@ -484,11 +561,14 @@ int main(int ac, char **av) {
     //test_files();
     //test_compression();
     //test_image2();
-    test_image_resize();
+    //test_image_resize();
     //test_stream();
 
     //test_server();
-    //test_event();
+    test_event();
+
+    //printf("%s %s\n",av[1],av[2]);
+    //benchmark_allocation(atoi(av[1]),atoi(av[2]));
 
     return 0;
 }

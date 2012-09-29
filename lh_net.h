@@ -14,6 +14,8 @@ int sock_server_ipv4_tcp(uint32_t ip, uint16_t port);
 #define sock_server_ipv4_tcp_local(port) sock_server_ipv4_tcp(INADDR_LOOPBACK,(port))
 #define sock_server_ipv4_tcp_any(port) sock_server_ipv4_tcp(INADDR_ANY,(port))
 
+int sock_client_ipv4_tcp(uint32_t ip, uint16_t port);
+
 // UDP functions
 
 int sock_server_ipv4_udp(uint32_t ip, uint16_t port);
