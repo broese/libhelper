@@ -207,9 +207,8 @@ TODO: resizing does not zero the new elements! Make it similar to ARRAY_EXTEND
 #define SORTF_(name,type,op)                                            \
     static int SORTF_##name                                             \
     (const void * a, const void * b, void * arg) {                      \
-        int offset = (int)arg & 0xffffff;                               \
-        int size   = (unsigned int)arg >> 24;                           \
-        printf("size=%d offset=%d\n",size,offset);                      \
+        size_t offset = ((size_t)arg) & 0xffffff;                       \
+        size_t size   = (size_t)arg >> 24;                              \
         switch (size) {                                                 \
         case 1: {                                                       \
             type ## int8_t * A = (type ## int8_t *)(((char *)a)+offset); \
@@ -232,7 +231,7 @@ TODO: resizing does not zero the new elements! Make it similar to ARRAY_EXTEND
             return op ((*A < *B) ? -1 : (*B < *A));                     \
         }                                                               \
         default:                                                        \
-            printf("Unsipported size %d\n",size);                       \
+            printf("Unsipported size %zd\n",size);                      \
         }                                                               \
     }
 

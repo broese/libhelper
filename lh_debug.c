@@ -1,14 +1,15 @@
 #include "lh_debug.h"
 #include <stdio.h>
 
-#define PARAALIGN(ptr) (unsigned char *)(((unsigned int)(ptr))&(-1L<<4))
+//FIXME: size_t -> ptrdiff_t ?
+#define PARAALIGN(ptr) (unsigned char *)(((size_t)(ptr))&(-1L<<4))
 
 void hexdump(const unsigned char * data, ssize_t length) {
     //FIXME: verify if this procedure works on 64 bit
 
     unsigned char * lptr;
     for(lptr=PARAALIGN(data); lptr<=PARAALIGN(data+length-1); lptr+=16) {
-        printf("%08p  ",lptr);
+        printf("%8p  ",lptr);
 
         int lo;
         for(lo=0; lo<16; lo++) {

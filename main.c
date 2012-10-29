@@ -200,11 +200,11 @@ void test_buffers() {
     ARRAY_ALLOCG(ss,len,26,16);
 
     memcpy(ss,cstr,26);
-    printf("ss=%08p len=%d >%s<\n",ss,len,ss);
+    printf("ss=%8p len=%d >%s<\n",ss,len,ss);
     hexdump(ss, 32);
 
     SORTD(ss,26,*ss);
-    printf("ss=%08p len=%d >%s<\n",ss,len,ss);
+    printf("ss=%8p len=%d >%s<\n",ss,len,ss);
     hexdump(ss, 32);
 
 #endif
@@ -273,7 +273,7 @@ void test_compression() {
         exit(1);
     }
 
-    printf("Compressed idata to %d bytes\n",olen);
+    printf("Compressed idata to %zd bytes\n",olen);
 
     hexdump(comp,olen);
     write_file("compressed.gz", comp, olen);
@@ -285,7 +285,7 @@ void test_compression() {
         exit(1);
     }
 
-    printf("Decompressed to %d bytes\n",dlen);
+    printf("Decompressed to %zd bytes\n",dlen);
     hexdump(plain,dlen);
 
 
@@ -303,7 +303,7 @@ void test_compression2() {
         printf("test_decompression failed\n");
         exit(1);
     }
-    printf("Decompressed to %d bytes\n",psize);
+    printf("Decompressed to %zd bytes\n",psize);
     hexdump(plain,psize);
 
     free(gzip);
@@ -464,19 +464,19 @@ void test_event() {
 
             //int res = evfile_read_once(fileno(fd),buf,sizeof(buf),&len);
             int res = evfile_read(fileno(fd),&b->data,&b->len,128);
-            printf("evfile_read returned %d, len=%d fd=%d\n",res,b->len,fileno(fd));
+            printf("evfile_read returned %d, len=%zd fd=%d\n",res,b->len,fileno(fd));
             hexdump(b->data,b->len);
 
             int kill=0;
             switch (res) {
             case EVFILE_OK:
-                printf("Have read as much as possible, buffer is full, processing %d bytes\n",b->len);
+                printf("Have read as much as possible, buffer is full, processing %zd bytes\n",b->len);
                 break;
             case EVFILE_WAIT:
-                printf("No more input data for now, processing %d bytes\n",b->len);
+                printf("No more input data for now, processing %zd bytes\n",b->len);
                 break;
             case EVFILE_EOF:
-                printf("End of file, removing client %d and processing %d bytes\n",fileno(fd),b->len);
+                printf("End of file, removing client %d and processing %zd bytes\n",fileno(fd),b->len);
                 kill=1;
                 break;
             case EVFILE_ERROR:
@@ -487,7 +487,7 @@ void test_event() {
 
             if (kill) {
                 buffer_t * b = pa.data[idx];
-                printf("buffer : %08p\n",b);
+                printf("buffer : %8p\n",b);
                 if (b->data) free(b->data);
                 free(b);
                 pollarray_remove_file(&pa, fd);
