@@ -384,7 +384,18 @@ void test_stream() {
     double x = parse_double(s);
     hexdump(s, 8);
     printf("%f %f %f\n",f,d,x);
+}
 
+void test_wstream() {
+    char buf[4096];
+    char *p = buf;
+
+    write_char(p,0x11);
+    write_short(p,0x2233);
+    write_int(p,0x44556677);
+    write_long(p,0x8899AABBCCDDEEFFLL);
+
+    hexdump(buf, p-buf);
 }
 
 void test_server() {
@@ -563,9 +574,10 @@ int main(int ac, char **av) {
     //test_image2();
     //test_image_resize();
     //test_stream();
+    test_wstream();
 
     //test_server();
-    test_event();
+    //test_event();
 
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));

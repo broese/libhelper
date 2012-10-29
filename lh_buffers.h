@@ -267,8 +267,8 @@ static int SORTF_1S_INC(const void * a, const void * b, void * arg) {
 ////////////////////////////////////////////////////////////////////////////////
 // Extraction of values from a byte stream
 
-#define PUTF *t++ = *p++
-#define PUTR *t-- = *p++
+#define GETF *t++ = *p++
+#define GETR *t-- = *p++
 
 static inline int8_t parse_char(const char *p) {
     return *p;
@@ -284,10 +284,10 @@ static inline int16_t parse_short(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[1];
-    PUTR; PUTR;
+    GETR; GETR;
 #else
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
+    GETF; GETF;
 #endif
     return temp.val;
 }
@@ -300,12 +300,12 @@ static inline int32_t parse_int(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[3];
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
 #else
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
 #endif
     return temp.val;
 }
@@ -318,16 +318,16 @@ static inline int64_t parse_long(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[7];
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
 #else
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
 #endif
     return temp.val;
 }
@@ -347,10 +347,10 @@ static inline int16_t parse_short_le(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
+    GETF; GETF;
 #else
     unsigned char *t = &temp.buf[1];
-    PUTR; PUTR;
+    GETR; GETR;
 #endif
     return temp.val;
 }
@@ -363,12 +363,12 @@ static inline int32_t parse_int_le(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
 #else
     unsigned char *t = &temp.buf[3];
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
 #endif
     return temp.val;
 }
@@ -381,16 +381,16 @@ static inline int64_t parse_long_le(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
 #else
     unsigned char *t = &temp.buf[7];
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
 #endif
     return temp.val;
 }
@@ -410,12 +410,12 @@ static inline float parse_float(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[3];
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
 #else
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
 #endif
     return temp.val;
 }
@@ -428,16 +428,16 @@ static inline double parse_double(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[7];
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
 #else
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
 #endif
     return temp.val;
 }
@@ -455,12 +455,12 @@ static inline float parse_float_le(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
 #else
     unsigned char *t = &temp.buf[3];
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
 #endif
     return temp.val;
 }
@@ -473,16 +473,16 @@ static inline double parse_double_le(const char *p) {
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned char *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
+    GETF; GETF;
 #else
     unsigned char *t = &temp.buf[7];
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
+    GETR; GETR;
 #endif
     return temp.val;
 }
@@ -490,3 +490,83 @@ static inline double parse_double_le(const char *p) {
 #define read_float_le(p)   parse_float_le(p);   p+=4
 #define read_double_le(p)  parse_double_le(p);  p+=8
 
+////////////////////////////////////////////////////////////////////////////////
+// Writing to a stream
+
+#define PUTF *p++ = *t++
+#define PUTR *p++ = *t--
+
+static inline char * place_char(char *p, int8_t v) {
+    *p++ = v;
+    return p;
+}
+
+static inline char * place_short(char *p, int16_t v) {
+    union {
+        int8_t  buf[2];
+        int16_t val;
+    } temp;
+
+    temp.val = v;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    int8_t *t = &temp.buf[1];
+    PUTR; PUTR;
+#else
+    int8_t *t = &temp.buf[0];
+    PUTF; PUTF;
+#endif
+
+    return p;
+}
+
+static inline char * place_int(char *p, int32_t v) {
+    union {
+        int8_t  buf[4];
+        int32_t val;
+    } temp;
+
+    temp.val = v;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    int8_t *t = &temp.buf[3];
+    PUTR; PUTR;
+    PUTR; PUTR;
+#else
+    int8_t *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+#endif
+
+    return p;
+}
+
+static inline char * place_long(char *p, int64_t v) {
+    union {
+        int8_t  buf[8];
+        int64_t val;
+    } temp;
+
+    temp.val = v;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    int8_t *t = &temp.buf[7];
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+#else
+    int8_t *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+#endif
+
+    return p;
+}
+
+#define write_char(p,v)  p=place_char(p,v)
+#define write_short(p,v) p=place_short(p,v)
+#define write_int(p,v)   p=place_int(p,v)
+#define write_long(p,v)  p=place_long(p,v)
