@@ -96,6 +96,7 @@ additionally specified in the granular versions of the macros
 
 // wrapped macro for declaration of such arrays
 #define ARRAY(type,ptr,cnt) type * ptr=NULL; int cnt=0;
+#define BUFFER(ptr,cnt) uint8_t * ptr=NULL; ssize_t cnt=0;
 
 // allocate array with 'num' elements, place the pointer to 'ptr' and
 // element count to 'cnt'
@@ -569,3 +570,52 @@ static inline char * place_long(char *p, int64_t v) {
 #define write_short(p,v) p=place_short(p,v)
 #define write_int(p,v)   p=place_int(p,v)
 #define write_long(p,v)  p=place_long(p,v)
+
+
+static inline uint8_t * place_float(char *p, float v) {
+    union {
+        uint8_t buf[4];
+        float val;
+    } temp;
+
+    temp.val = v;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    uint8_t *t = &temp.buf[3];
+    PUTR; PUTR;
+    PUTR; PUTR;
+#else
+    uint8_t *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+#endif
+    return p;
+}
+
+static inline uint8_t * place_double(char *p, double v) {
+    union {
+        uint8_t buf[8];
+        double val;
+    } temp;
+
+    temp.val = v;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    uint8_t *t = &temp.buf[7];
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+    PUTR; PUTR;
+#else
+    uint8_t *t = &temp.buf[0];
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+    PUTF; PUTF;
+#endif
+    return p;
+}
+
+#define write_float(p,v)   place_float(p,v);   p+=4
+#define write_double(p,v)  place_double(p,v);  p+=8
+
