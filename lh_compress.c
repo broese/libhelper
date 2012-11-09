@@ -53,6 +53,7 @@ static unsigned char * zlib_encode_internal
         result = deflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
         if (result == Z_STREAM_ERROR) {
             free(odata);
+            deflateEnd(&zs);
             LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
         }
 
@@ -66,6 +67,7 @@ static unsigned char * zlib_encode_internal
     } while(result != Z_STREAM_END);
 
     ARRAY_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
+    deflateEnd(&zs);
     return odata;
 }
 
@@ -115,10 +117,12 @@ static unsigned char * zlib_decode_internal
                
         if (result == Z_STREAM_ERROR) {
             free(odata);
+            inflateEnd(&zs);
             LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
         }
         if (result == Z_STREAM_ERROR) {
             free(odata);
+            inflateEnd(&zs);
             LH_ERROR(NULL,"Incorrect zlib data. Z_DATA_ERROR\n");
         }
 
@@ -132,6 +136,7 @@ static unsigned char * zlib_decode_internal
     } while(result != Z_STREAM_END);
 
     ARRAY_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
+    inflateEnd(&zs);
     return odata;
 }
 
