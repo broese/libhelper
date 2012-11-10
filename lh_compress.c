@@ -4,6 +4,7 @@
 #include <zlib.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 
 #define ALLOCGRAN 4096
 
@@ -11,148 +12,204 @@
 #define FORMAT_GZIP 1
 #define FORMAT_AUTO 2
 
-static unsigned char * zlib_encode_internal
-(const unsigned char *data, ssize_t length, ssize_t *olength, int format, int complevel) {
+#define OP_ENCODE   0
+#define OP_DECODE   1
+
+#define AM_STATIC   0
+// do not reallocate buffers
+// if there is no space, abort with error
+// olen contains buffer size on enter
+// return value is the length (olen is not modified)
+
+#define AM_DYNAMIC  1
+// realloc buffers if needed
+// olen contains maximum allowed buffer size 
+
+static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode,
+                             const uint8_t *ibuf, ssize_t ilen, uint8_t **obuf, ssize_t *olen,
+                             ptrdiff_t offset) {
+    
+    // set up zlib state parameters
     z_stream zs;
     zs.zalloc = Z_NULL;
     zs.zfree  = Z_NULL;
     zs.opaque = Z_NULL;
 
+    zs.next_in  = ibuf;
+    zs.avail_in = ilen;
+
+
+    // initialize zlib operation
     int result;
-
-    switch (format) {
-    case FORMAT_ZLIB:
-        result = deflateInit(&zs, complevel);
-        break;
-    case FORMAT_GZIP:
-        result = deflateInit2(&zs, complevel, Z_DEFLATED, 16+MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
-        break;
-    default:
-        LH_ERROR(NULL,"zlib_encode_internal: unsupported output format %d\n",format);
-        break;
+    if (op == OP_ENCODE) {
+        switch (format) {
+        case FORMAT_ZLIB:
+            result = deflateInit(&zs, complevel);
+            break;
+        case FORMAT_GZIP:
+            result = deflateInit2(&zs, complevel, Z_DEFLATED, 16+MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
+            break;
+        default:
+            LH_ERROR(NULL,"zlib_internal: unsupported output format %d\n",format);
+            break;
+        }
+        if (result != Z_OK)
+            LH_ERROR(NULL,"deflateInit failed, error %d\n",result);
     }
-    if (result != Z_OK)
-        LH_ERROR(NULL,"deflateInit failed, error %d\n",result);
+    else {
+        switch (format) {
+        case FORMAT_ZLIB:
+            result = inflateInit(&zs);
+            break;
+        case FORMAT_GZIP:
+            result = inflateInit2(&zs, 16+MAX_WBITS);
+            break;
+        case FORMAT_AUTO:
+            result = inflateInit2(&zs, 32+MAX_WBITS);
+            break;
+        default:
+            LH_ERROR(NULL,"zlib_encode_internal: unsupported output format %d\n",format);
+            break;
+        }
+        if (result != Z_OK)
+            LH_ERROR(NULL,"inflateInit failed, error %d\n",result);
+    }
 
-    zs.next_in  = data;
-    zs.avail_in = length;
+    // check if we need to pre-allocate the output buffer
+    if (*olen-offset <= 0) {
+        if (alloc_mode == AM_STATIC) {
+            LH_ERROR(NULL,"unsufficient output buffer size %zd\n", *olen);
+        }
+        else {
+            ARRAY_ALLOCG(*obuf, *olen, LH_COMPRESS_ALLOCGRAN+offset, LH_COMPRESS_ALLOCGRAN);
+        }
+    }
 
-    unsigned char *odata;
-    ARRAY_ALLOCG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
-    zs.next_out = odata;
-    zs.avail_out = *olength;
+    zs.next_out = *obuf+offset;
+    zs.avail_out = *olen-offset;
 
     do {
-#if 0
-        printf("IN : %08p %d\n"
-               "OUT: %08p %d\n",
-               zs.next_in, zs.avail_in,
-               zs.next_out, zs.avail_out);
-#endif
-               
-        result = deflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
-        if (result == Z_STREAM_ERROR) {
-            free(odata);
-            deflateEnd(&zs);
-            LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
+        if (op == OP_ENCODE) {
+            result = deflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
+            
+            if (result == Z_STREAM_ERROR) {
+                deflateEnd(&zs);
+                LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
+                //TODO: user should free the buffer
+            }
         }
+        else {
+            result = inflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
+            
+            if (result == Z_STREAM_ERROR) {
+                inflateEnd(&zs);
+                LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
+                //TODO: user should free the buffer
+            }
+        }            
 
-        ssize_t outsize = zs.next_out - odata;
+        ssize_t outsize = zs.next_out - *obuf; // current size of data in the buffer
         if (result == Z_BUF_ERROR) {
-        //        if (zs.avail_out < ALLOCGRAN) {
-            ARRAY_ADDG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
-            zs.next_out = odata + outsize;
-            zs.avail_out = *olength - outsize;
+            if (alloc_mode == AM_STATIC)
+                LH_ERROR(NULL,"unsufficient output buffer size %zd\n", *olen);
+
+            ARRAY_ADDG(*obuf, *olen, LH_COMPRESS_ALLOCGRAN, LH_COMPRESS_ALLOCGRAN);
+            zs.next_out = *obuf + outsize;
+            zs.avail_out = *olen - outsize;
         }
     } while(result != Z_STREAM_END);
 
-    ARRAY_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
-    deflateEnd(&zs);
-    return odata;
+    if (op == OP_ENCODE)
+        deflateEnd(&zs);
+    else
+       inflateEnd(&zs);
+
+    return zs.next_out;
 }
 
-static unsigned char * zlib_decode_internal
-(const unsigned char *data, ssize_t length, ssize_t *olength, int format) {
-    z_stream zs;
-    zs.zalloc = Z_NULL;
-    zs.zfree  = Z_NULL;
-    zs.opaque = Z_NULL;
-    zs.next_in  = data;
-    zs.avail_in = length;
+ssize_t zlib_encode_to(const uint8_t *ibuf, ssize_t ilen, uint8_t *obuf, ssize_t olen) {
+    uint8_t *wp = zlib_internal(OP_ENCODE, FORMAT_ZLIB, Z_DEFAULT_COMPRESSION, AM_STATIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    return wp ? wp - obuf : -1;
+}
 
-    int result;
-    switch (format) {
-    case FORMAT_ZLIB:
-        result = inflateInit(&zs);
-        break;
-    case FORMAT_GZIP:
-        result = inflateInit2(&zs, 16+MAX_WBITS);
-        break;
-    case FORMAT_AUTO:
-        result = inflateInit2(&zs, 32+MAX_WBITS);
-        break;
-    default:
-        LH_ERROR(NULL,"zlib_encode_internal: unsupported output format %d\n",format);
-        break;
+ssize_t zlib_decode_to(const uint8_t *ibuf, ssize_t ilen, uint8_t *obuf, ssize_t olen) {
+    uint8_t *wp = zlib_internal(OP_DECODE, FORMAT_ZLIB, Z_DEFAULT_COMPRESSION, AM_STATIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    return wp ? wp - obuf : -1;
+}
+
+
+uint8_t * zlib_encode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
+    BUFFER(obuf,olen);
+    uint8_t *wp = zlib_internal(OP_ENCODE, FORMAT_ZLIB, Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    if (wp) {
+        *olength = wp-obuf;
+        return obuf;
     }
-    if (result != Z_OK)
-        LH_ERROR(NULL,"inflateInit failed, error %d\n",result);
-
-    unsigned char *odata;
-    ARRAY_ALLOCG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
-    zs.next_out = odata;
-    zs.avail_out = *olength;
-
-    do {
-        result = inflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
-#if 0
-        printf("\n"
-               "result = %d\n"
-               "IN : %08p %d\n"
-               "OUT: %08p %d\n",
-               result,
-               zs.next_in, zs.avail_in,
-               zs.next_out, zs.avail_out);
-#endif
-               
-        if (result == Z_STREAM_ERROR) {
-            free(odata);
-            inflateEnd(&zs);
-            LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
-        }
-        if (result == Z_STREAM_ERROR) {
-            free(odata);
-            inflateEnd(&zs);
-            LH_ERROR(NULL,"Incorrect zlib data. Z_DATA_ERROR\n");
-        }
-
-        ssize_t outsize = zs.next_out - odata;
-        if (result == Z_BUF_ERROR) {
-        //        if (zs.avail_out < ALLOCGRAN) {
-            ARRAY_ADDG(odata, *olength, ALLOCGRAN, ALLOCGRAN);
-            zs.next_out = odata + outsize;
-            zs.avail_out = *olength - outsize;
-        }
-    } while(result != Z_STREAM_END);
-
-    ARRAY_EXTENDG(odata, *olength, zs.total_out, ALLOCGRAN);
-    inflateEnd(&zs);
-    return odata;
+    else {
+        if (obuf) free(obuf);
+        *olength = 0;
+        return NULL;
+    }
+}
+uint8_t * zlib_decode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
+    BUFFER(obuf,olen);
+    uint8_t *wp = zlib_internal(OP_DECODE, FORMAT_ZLIB, Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    if (wp) {
+        *olength = wp-obuf;
+        return obuf;
+    }
+    else {
+        if (obuf) free(obuf);
+        *olength = 0;
+        return NULL;
+    }
 }
 
-unsigned char * zlib_encode(const unsigned char *data, ssize_t length, ssize_t *olength) {
-    return zlib_encode_internal(data, length, olength, FORMAT_ZLIB, Z_DEFAULT_COMPRESSION);
+ssize_t gzip_encode_to(const uint8_t *ibuf, ssize_t ilen, uint8_t *obuf, ssize_t olen) {
+    uint8_t *wp = zlib_internal(OP_ENCODE, FORMAT_GZIP, Z_DEFAULT_COMPRESSION, AM_STATIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    return wp ? wp - obuf : -1;
 }
 
-unsigned char * gzip_encode(const unsigned char *data, ssize_t length, ssize_t *olength) {
-    return zlib_encode_internal(data, length, olength, FORMAT_GZIP, Z_DEFAULT_COMPRESSION);
+ssize_t gzip_decode_to(const uint8_t *ibuf, ssize_t ilen, uint8_t *obuf, ssize_t olen) {
+    uint8_t *wp = zlib_internal(OP_DECODE, FORMAT_GZIP, Z_DEFAULT_COMPRESSION, AM_STATIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    return wp ? wp - obuf : -1;
 }
 
-unsigned char * zlib_decode(const unsigned char *data, ssize_t length, ssize_t *olength) {
-    return zlib_decode_internal(data, length, olength, FORMAT_ZLIB);
+
+uint8_t * gzip_encode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
+    BUFFER(obuf,olen);
+    uint8_t *wp = zlib_internal(OP_ENCODE, FORMAT_GZIP, Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    if (wp) {
+        *olength = wp-obuf;
+        return obuf;
+    }
+    else {
+        if (obuf) free(obuf);
+        *olength = 0;
+        return NULL;
+    }
+}
+uint8_t * gzip_decode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
+    BUFFER(obuf,olen);
+    uint8_t *wp = zlib_internal(OP_DECODE, FORMAT_GZIP, Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
+                                ibuf, ilen, &obuf, &olen, 0);
+    if (wp) {
+        *olength = wp-obuf;
+        return obuf;
+    }
+    else {
+        if (obuf) free(obuf);
+        *olength = 0;
+        return NULL;
+    }
 }
 
-unsigned char * gzip_decode(const unsigned char *data, ssize_t length, ssize_t *olength) {
-    return zlib_decode_internal(data, length, olength, FORMAT_GZIP);
-}
+
 

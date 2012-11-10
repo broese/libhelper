@@ -570,11 +570,11 @@ int main(int ac, char **av) {
     //test_buffers();
     //test_multiarrays();
     //test_files();
-    //test_compression();
+    test_compression();
     //test_image2();
     //test_image_resize();
     //test_stream();
-    test_wstream();
+    //test_wstream();
 
     //test_server();
     //test_event();
