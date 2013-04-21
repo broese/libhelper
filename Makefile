@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -pg
 LIBS=-lz -lpng
 LIBSSOL=-lsocket -lnsl
-DEFS=
+DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 AR=ar
 
 LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o lh_net.o lh_event.o

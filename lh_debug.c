@@ -30,3 +30,9 @@ void hexdump(const unsigned char * data, ssize_t length) {
         printf("\n");
     }
 }
+
+void hexprint(const unsigned char * data, ssize_t length) {
+    int i;
+    for(i=0; i<length; i++)
+        printf("%02x%s",*data++,(length==i+1)?"\n":" ");
+}

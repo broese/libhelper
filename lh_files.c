@@ -26,7 +26,7 @@ off_t get_file_length_f(FILE * fd) {
 ////////////////////////////////////////////////////////////////////////////////
 // file opening
 
-static FILE *open_file(const char *path, const char *mode, const char *smode, ssize_t *size) {
+static FILE *open_file(const char *path, const char *mode, const char *smode, off_t *size) {
     FILE * fd = fopen(path, mode);
     if (!fd) LH_ERROR(NULL,"Failed to open %s for %s",path,smode);
     *size = get_file_length_f(fd);
@@ -34,20 +34,20 @@ static FILE *open_file(const char *path, const char *mode, const char *smode, ss
     return fd;
 }
 
-FILE *open_file_r(const char *path, ssize_t *size) {
+FILE *open_file_r(const char *path, off_t *size) {
     return open_file(path,"r","reading",size);
 }
 
 FILE *open_file_w(const char *path) {
-    ssize_t size;
+    off_t size;
     return open_file(path,"w","writing",&size);
 }
 
-FILE *open_file_u(const char *path, ssize_t *size) {
+FILE *open_file_u(const char *path, off_t *size) {
     return open_file(path,"r+","updating",size);
 }
 
-FILE *open_file_a(const char *path, ssize_t *size) {
+FILE *open_file_a(const char *path, off_t *size) {
     return open_file(path,"a","appending",size);
 }
 
@@ -55,7 +55,8 @@ FILE *open_file_a(const char *path, ssize_t *size) {
 // reading and writing entire files
 
 unsigned char * read_file(const char * path, ssize_t *size) {
-    FILE * fd = open_file_r(path, size);
+    off_t fsize;
+    FILE * fd = open_file_r(path, &fsize);
     if (!fd) return NULL;
     unsigned char *buf = read_file_f(fd,size);
     fclose(fd);
@@ -64,8 +65,11 @@ unsigned char * read_file(const char * path, ssize_t *size) {
 
 unsigned char * read_file_f(FILE *fd, ssize_t *size) {
     rewind(fd);
-    *size = get_file_length_f(fd);
-    if (*size<0) return NULL;
+    off_t fsize;
+    fsize = get_file_length_f(fd);
+    if (fsize<0) return NULL;
+    if (sizeof(*size)==4 && fsize>=(1<<31))
+        LH_ERROR(NULL,"File size exceeds %d-bit representation", sizeof(*size)*8);
 
     ALLOCB(buffer,*size);
     if (!buffer) LH_ERROR(NULL, "Failed to allocate buffer for %zd bytes",*size);
@@ -95,7 +99,7 @@ int write_file(const char *path, const unsigned char *data, ssize_t size) {
 }
 
 int append_file(const char *path, const unsigned char *data, ssize_t size) {
-    ssize_t oldsize;
+    off_t oldsize;
     FILE * fd = open_file_u(path, &oldsize);
     if (!fd) return -1;
     int result = write_file_f(fd,data,size);
@@ -108,13 +112,13 @@ int append_file(const char *path, const unsigned char *data, ssize_t size) {
 
 int write_to(FILE *fd, off_t offset, const unsigned char *data, ssize_t size) {
     if (fseek(fd, offset,SEEK_SET))
-        LH_ERROR(-1,"Failed to seek to position %lu\n",offset);
+        LH_ERROR(-1,"Failed to seek to position %jd\n",(intmax_t)offset);
     return write_file_f(fd, data, size);
 }
 
 int read_from(FILE *fd, off_t offset, unsigned char *buffer, ssize_t size) {
     if (fseek(fd, offset,SEEK_SET))
-        LH_ERROR(-1,"Failed to seek to position %lu\n",offset);
+        LH_ERROR(-1,"Failed to seek to position %jd\n",(intmax_t)offset);
 
     ssize_t rbytes = fread(buffer,1,size,fd);
     if (rbytes!=size)

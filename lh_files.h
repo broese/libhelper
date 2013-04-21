@@ -14,10 +14,10 @@ lh_files - file operations
 off_t get_file_length(const char * path);
 off_t get_file_length_f(FILE * fd);
 
-FILE *open_file_r(const char *path, ssize_t *size);
+FILE *open_file_r(const char *path, off_t *size);
 FILE *open_file_w(const char *path);
-FILE *open_file_u(const char *path, ssize_t *size);
-FILE *open_file_a(const char *path, ssize_t *size);
+FILE *open_file_u(const char *path, off_t *size);
+FILE *open_file_a(const char *path, off_t *size);
 
 unsigned char * read_file(const char * path, ssize_t *size);
 unsigned char * read_file_f(FILE *fd, ssize_t *size);

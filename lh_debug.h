@@ -63,3 +63,4 @@ via exit(1).
 ////////////////////////////////////////////////////////////////////////////////
 
 void hexdump(const unsigned char * data, ssize_t length);
+void hexprint(const unsigned char * data, ssize_t length);

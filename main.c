@@ -243,7 +243,7 @@ void test_multiarrays() {
 }
 
 void test_files() {
-    ssize_t size;
+    off_t size;
     FILE *m = open_file_r("Makefile",&size);
     unsigned char * data = read_froma(m,34,55);
     hexdump(data+3, 55);
