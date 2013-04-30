@@ -193,7 +193,7 @@ void test_buffers() {
 #endif
 
 
-#if 1
+#if __linux
     printf("-------------------\n");
     char *cstr = "ABQRSTUJKLVWFGCDEMNOPHIXYZ";
     ARRAY(char,ss,len);
@@ -245,7 +245,7 @@ void test_multiarrays() {
 void test_files() {
     off_t size;
     FILE *m = open_file_r("Makefile",&size);
-    unsigned char * data = read_froma(m,34,55);
+    unsigned char * data = read_fp_at(m,34,55);
     hexdump(data+3, 55);
     free(data);
 }
@@ -261,7 +261,7 @@ void test_compression() {
     ilen = strlen(idata)+1;
 #else
     ssize_t ilen;
-    char * idata = read_file("test.txt", &ilen);
+    char * idata = read_file_whole("test.txt", &ilen);
 #endif
     
 
@@ -294,7 +294,7 @@ void test_compression() {
 
 void test_compression2() {
     ssize_t gsize;
-    unsigned char * gzip = read_file("test.gz",&gsize);
+    unsigned char * gzip = read_file_whole("test.gz",&gsize);
     hexdump(gzip,gsize);
 
     ssize_t psize;

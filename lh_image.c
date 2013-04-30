@@ -282,7 +282,7 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
 
 lhimage * import_png_file(const char *path) {
     ssize_t size;
-    unsigned char * data = read_file(path, &size);
+    unsigned char * data = read_file_whole(path, &size);
     if (!data) return NULL;
 
     lhimage *img = import_png(data, size);

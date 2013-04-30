@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g -pg
-LIBS=-lz -lpng
 LIBSSOL=-lsocket -lnsl
+LIBS=-lz -lpng #$(LIBSSOL)
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 AR=ar
 
