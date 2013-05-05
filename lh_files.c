@@ -131,91 +131,46 @@ int read_file_at_to(const char * path, uint8_t * buffer, off_t pos, ssize_t size
     return res;
 }
 
-
-
-
-
-
-
-
-#if 0
-
-
-unsigned char * read_file_f(FILE *fd, ssize_t *size) {
-    rewind(fd);
-    off_t fsize;
-    fsize = filesize_fp(fd);
-    if (fsize<0) return NULL;
-    if (sizeof(*size)==4 && fsize>=(1<<31))
-        LH_ERROR(NULL,"File size exceeds %d-bit representation", sizeof(*size)*8);
-
-    ALLOCB(buffer,*size);
-    if (!buffer) LH_ERROR(NULL, "Failed to allocate buffer for %zd bytes",*size);
-    
-    ssize_t rbytes = fread(buffer,1,*size,fd);
-    if (rbytes!=*size) {
-        free(buffer);
-        LH_ERROR(NULL,"Failed to read %zd bytes from file (only read %zd)",*size,rbytes);
-    }
-
-    return buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// reading and writing file fragments
-
-int write_to(FILE *fd, off_t offset, const unsigned char *data, ssize_t size) {
-    if (fseek(fd, offset,SEEK_SET))
-        LH_ERROR(-1,"Failed to seek to position %jd\n",(intmax_t)offset);
-    return write_file_f(fd, data, size);
-}
-
-int read_from(FILE *fd, off_t offset, unsigned char *buffer, ssize_t size) {
-    if (fseek(fd, offset,SEEK_SET))
-        LH_ERROR(-1,"Failed to seek to position %jd\n",(intmax_t)offset);
-
-    ssize_t rbytes = fread(buffer,1,size,fd);
-    if (rbytes!=size)
-        LH_ERROR(-1,"Failed to read %zd bytes from file (only read %zd)",size,rbytes);
-
-    return 0;
-}
-
-unsigned char * read_froma(FILE *fd, off_t offset, ssize_t size) {
-    ALLOCB(buffer,size);
-    if (!buffer) LH_ERROR(NULL, "Failed to allocate buffer for %zd bytes",size);
-
-    if (read_from(fd, offset, buffer, size)) {
-        free(buffer);
-        return NULL;
-    }
-
-    return buffer;
-}
-
-#endif
-
-int write_file_f(FILE *fd, const unsigned char *data, ssize_t size) {
-    ssize_t wbytes = fwrite(data, 1, size, fd);
-    if (wbytes != size)
-        LH_ERROR(-1,"Failed to write %zd bytes to file (only wrote %zd)",size,wbytes);
-    return 0;
-}
-
-int write_file(const char *path, const unsigned char *data, ssize_t size) {
+int write_file(const char *path, const uint8_t *data, ssize_t size) {
     FILE * fd = open_file_w(path);
     if (!fd) return -1;
-    int result = write_file_f(fd,data,size);
+
+    int res = write_fp(fd, data, size);
     fclose(fd);
-    return result;
+
+    return res;
 }
 
-int append_file(const char *path, const unsigned char *data, ssize_t size) {
-    off_t oldsize;
-    FILE * fd = open_file_u(path, &oldsize);
+int write_file_at(const char *path, off_t pos, const uint8_t *data, ssize_t size) {
+    FILE * fd = open_file_u(path, NULL);
     if (!fd) return -1;
-    int result = write_file_f(fd,data,size);
+
+    int res = write_fp_at(fd, pos, data, size);
     fclose(fd);
-    return result;
+
+    return res;
+}
+
+int write_fp(FILE *fp, const uint8_t *data, ssize_t size) {
+    size_t written = fwrite(data, 1, size, fp);
+    if (written != size)
+        LH_ERROR(-1, "Failed to write %zd bytes to file, only wrote %zd\n", size, written);
+    return 0;
+}
+
+int write_fp_at(FILE *fp, off_t pos, const uint8_t *data, ssize_t size) {
+    if (fseeko(fp, pos, SEEK_SET)<0)                                    
+        LH_ERROR(-1, "Failed to seek to offset %jd", (intmax_t) pos);
+    return write_fp(fp, data, size);
+}
+
+int append_file(const char *path, const uint8_t *data, ssize_t size) {
+    FILE * fd = open_file_a(path, NULL);
+    if (!fd) return -1;
+
+    int res = write_fp(fd, data, size);
+    fclose(fd);
+
+    return res;
 }
 
