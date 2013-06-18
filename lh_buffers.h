@@ -619,3 +619,37 @@ static inline uint8_t * place_double(char *p, double v) {
 #define write_float(p,v)   place_float(p,v);   p+=4
 #define write_double(p,v)  place_double(p,v);  p+=8
 
+////////////////////////////////////////////////////////////////////////////////
+
+static inline uint16_t swap_short(uint16_t v) {
+    return (v>>8)|(v<<8);
+    //return __builtin_bswap16(v);
+}
+
+static inline uint32_t swap_int(uint32_t v) {
+    return __builtin_bswap32(v);
+}
+
+static inline uint64_t swap_long(uint64_t v) {
+    return __builtin_bswap64(v);
+}
+
+static inline float swap_float(float v) {
+    union {
+        float vf;
+        uint32_t vi;
+    } S;
+    S.vf = v;
+    S.vi = swap_int(S.vi);
+    return S.vf;
+}
+
+static inline double swap_double(double v) {
+    union {
+        double vd;
+        uint64_t vl;
+    } S;
+    S.vd = v;
+    S.vl = swap_long(S.vl);
+    return S.vd;
+}

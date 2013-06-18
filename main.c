@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <math.h>
+
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -563,14 +565,49 @@ void benchmark_allocation(int narrays, int gran) {
     printf("Total: %d\n",n);
 }
 
+void test_swap() {
+    union {
+        uint8_t c[8];
+        uint16_t s;
+        uint32_t i;
+        uint64_t l;
+        float    f;
+        double   d;
+    } Z;
+    CLEAR(Z);
+
+    Z.s = 0x1234;
+    Z.s = swap_short(Z.s);
+    hexdump(Z.c, sizeof(Z));
+    
+    Z.i = 0x12345678;
+    Z.i = swap_int(Z.i);
+    hexdump(Z.c, sizeof(Z));
+    
+    Z.l = 0x123456789abcdef0;
+    Z.l = swap_long(Z.l);
+    hexdump(Z.c, sizeof(Z));
+
+    CLEAR(Z);
+    Z.f = (float)M_PI;
+    //Z.f = swap_float(Z.f);
+    hexdump(Z.c, sizeof(Z));
+    
+    Z.d = M_PI;
+    //Z.d = swap_double(Z.d);
+    hexdump(Z.c, sizeof(Z));
+}
+
 int main(int ac, char **av) {
+    test_swap();
+
 
     //test_pp();
     //test_clear();
     //test_buffers();
     //test_multiarrays();
     //test_files();
-    test_compression();
+    //test_compression();
     //test_image2();
     //test_image_resize();
     //test_stream();

@@ -84,7 +84,7 @@ uint8_t * read_fp_whole(FILE *fp, ssize_t *size) {
     // check if the file size theoretically fits into memory
     // FIXME: limited to 2GiB on 32-bit platforms
     if (sizeof(off_t)>sizeof(size_t) && fsize >= SSIZE_MAX)
-        LH_ERROR(NULL, "File size (%jd) exceeds limits of ssize_t (%d bits)", (intmax_t)fsize, sizeof(ssize_t)/8 );
+        LH_ERROR(NULL, "File size (%jd) exceeds limits of ssize_t (%zd bits)", (intmax_t)fsize, sizeof(ssize_t)*8 );
     *size = (ssize_t)fsize;
 
     return read_fp_at(fp, 0, *size);
