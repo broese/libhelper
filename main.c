@@ -578,28 +578,32 @@ void test_swap() {
 
     Z.s = 0x1234;
     Z.s = swap_short(Z.s);
-    hexdump(Z.c, sizeof(Z));
+    //hexdump(Z.c, sizeof(Z));
     
     Z.i = 0x12345678;
     Z.i = swap_int(Z.i);
-    hexdump(Z.c, sizeof(Z));
+    //hexdump(Z.c, sizeof(Z));
     
-    Z.l = 0x123456789abcdef0;
+    Z.l = 0x123456789abcdef0LL;
     Z.l = swap_long(Z.l);
-    hexdump(Z.c, sizeof(Z));
+    //hexdump(Z.c, sizeof(Z));
 
     CLEAR(Z);
     Z.f = (float)M_PI;
-    //Z.f = swap_float(Z.f);
-    hexdump(Z.c, sizeof(Z));
+    //hexdump(Z.c, sizeof(Z));
+    Z.f = swap_float(Z.f);
+    //hexdump(Z.c, sizeof(Z));
     
     Z.d = M_PI;
-    //Z.d = swap_double(Z.d);
-    hexdump(Z.c, sizeof(Z));
+    //hexdump(Z.c, sizeof(Z));
+    Z.d = swap_double(Z.d);
+    //hexdump(Z.c, sizeof(Z));
 }
 
 int main(int ac, char **av) {
-    test_swap();
+    int i;
+    for (i=0; i<10000000; i++)
+        test_swap();
 
 
     //test_pp();
