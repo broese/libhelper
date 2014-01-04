@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -pg
 LIBSSOL=-lsocket -lnsl
 LIBS=-lz -lpng #$(LIBSSOL)
-DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
+DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=1
 AR=ar
 
 LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o lh_net.o lh_event.o
@@ -22,4 +22,10 @@ main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h
 
 clean:
 	rm -f *.o *~
+
+FORCE:
+
+mtrace: FORCE
+	MALLOC_TRACE=mtrace ./test
+	mtrace mtrace | perl -e 'while (<>) { if (/^(0x\S+)\s+(0x\S+)\s+at\s+(0x\S+)/) { print "$$1 $$2 at ".`addr2line -e test $$3`; } }'
 

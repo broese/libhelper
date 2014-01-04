@@ -1,5 +1,6 @@
 // on Solaris, requires -lsocket -lnsl
 
+#include "lh_buffers.h"
 #include "lh_debug.h"
 #include "lh_files.h"
 #include "lh_net.h"
@@ -60,4 +61,29 @@ int sock_client_ipv4_tcp(uint32_t ip, uint16_t port) {
     }
 
     return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//FIXME: come up with a better idea to return an error
+uint32_t dns_addr_ipv4(const char *hostname) {
+    struct addrinfo hints;
+    CLEAR(hints);
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    struct addrinfo *result;
+
+    int res = getaddrinfo(hostname, NULL, &hints, &result);
+
+    if (res) {
+        LH_ERROR(0xffffffff, "%s: cannot resolve hostname %s : %s",
+                 __func__,hostname,gai_strerror(res));
+    }
+
+    struct sockaddr_in *sin = (struct sockaddr_in *)result[0].ai_addr;
+    uint32_t addr = ntohl(sin->sin_addr.s_addr);
+    freeaddrinfo(result);
+
+    return addr;
 }

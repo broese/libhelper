@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#if DEBUG_MEMORY
+#include <mcheck.h>
+#endif
 
 #include "lh_buffers.h"
 #include "lh_files.h"
@@ -600,11 +603,26 @@ void test_swap() {
     //hexdump(Z.c, sizeof(Z));
 }
 
-int main(int ac, char **av) {
-    int i;
-    for (i=0; i<10000000; i++)
-        test_swap();
+#define TESTDNS(n) printf("%s => %08x\n",n,dns_addr_ipv4(n))
 
+void test_dns() {
+    TESTDNS("0.0.0.0");
+    TESTDNS("127.0.0.1");
+    TESTDNS("224.0.0.1");
+    TESTDNS("255.255.255.252");
+    TESTDNS("255.255.255.255");
+    TESTDNS("localhost");
+    TESTDNS("washuu.no-ip.biz");
+    TESTDNS("washuu.homeip.net");
+    TESTDNS("slashdot.org");
+}
+
+int main(int ac, char **av) {
+#if DEBUG_MEMORY
+    mtrace();
+#endif
+    int i;
+    // for (i=0; i<10000000; i++) test_swap();
 
     //test_pp();
     //test_clear();
@@ -620,9 +638,14 @@ int main(int ac, char **av) {
     //test_server();
     //test_event();
 
+    test_dns();
+
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));
 
+#if DEBUG_MEMORY
+    muntrace();
+#endif
     return 0;
 }
 
