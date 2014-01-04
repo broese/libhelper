@@ -622,7 +622,7 @@ static inline uint8_t * place_double(char *p, double v) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline uint16_t swap_short(uint16_t v) {
-#ifdef __builtin_bswap16
+#ifdef HAVE_BUILTIN_BSWAP16
     return __builtin_bswap16(v);
 #else
     return (v>>8)|(v<<8);
@@ -630,7 +630,7 @@ static inline uint16_t swap_short(uint16_t v) {
 }
 
 static inline uint32_t swap_int(uint32_t v) {
-#ifdef __builtin_bswap32
+#ifdef HAVE_BUILTIN_BSWAP32
     return __builtin_bswap32(v);
 #else
     return (v<<24) | (v<<8 & 0xff0000) | (v>>8 & 0xff00) | (v>>24);
@@ -638,7 +638,7 @@ static inline uint32_t swap_int(uint32_t v) {
 }
 
 static inline uint64_t swap_long(uint64_t v) {
-#ifdef __builtin_bswap64
+#ifdef HAVE_BUILTIN_BSWAP64
     return __builtin_bswap64(v);
 #else
     return
