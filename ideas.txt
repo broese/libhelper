@@ -51,4 +51,20 @@ strings, Regexp
 
 split, join, match
 
+////////////////////////////////////////////////////////////////////////////////
 
+Implementing a packet parser
+
+// the parser implies a couple of variables in the scope, which might be hidden
+// from the user's view through macros. Since the variables will be initialized,
+// it is sensible to enclose it in a block 
+uint8_t *s : start of the bytestream (for rewinding) - IS THIS NECESSARY? - yes maybe to calculate length
+uint8_t *p : pointer to the bytestream - 
+uint8_t *l : read limit
+
+// A macro to initialize the environment of the parser.
+Pinit(buffer, buffer+len);
+
+#define Pinit(buffer_start, buffer_limit) uint_t *s = buffer_start; uint_t *p = s; uint_t *l = buffer_limit;
+
+// 

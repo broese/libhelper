@@ -23,6 +23,9 @@ main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h
 clean:
 	rm -f *.o *~
 
+doc:
+	doxygen
+
 FORCE:
 
 mtrace: FORCE
