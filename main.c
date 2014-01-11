@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#if 0
 #include <math.h>
 
 #include <sys/socket.h>
@@ -10,92 +11,198 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#endif
 
 #if DEBUG_MEMORY
 #include <mcheck.h>
 #endif
 
+#define LH_DECLARE_SHORT_NAMES 1
+
 #include "lh_buffers.h"
+#if 0
 #include "lh_files.h"
 #include "lh_compress.h"
 #include "lh_image.h"
 #include "lh_net.h"
 #include "lh_event.h"
 
-typedef struct {
+#define ALLOC_GRAN 4
+#define BUF_GRAN   64
+#endif
+
+typedef struct vertex {
     float x, y, z;
     float nx, ny, nz;
     float tx, ty;
 } vertex;
 
-typedef struct {
+typedef struct face {
     int a,b,c;
 } face;
 
-typedef struct {
+typedef struct model {
     vertex * v;
     int      nv;
     face   * f;
     int      nf;
 } model;
 
-#define ALLOC_GRAN 4
-#define BUF_GRAN   64
-
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TESTGRAN(num) printf("num=%d gran=%d rest=%d size=%d\n", \
-                             num,16,GRANREST(num,16),GRANSIZE(num,16));
-void test_pp() {
-    printf("Testing generic PP macros\n");
+#define PASSFAIL(cond) ( (cond) ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m" )
 
-    printf("VA_LENGTH\n");
-    printf("%d\n",VA_LENGTH(a,b,c));
-    printf("%d\n",VA_LENGTH(a,b,c,d,e));
-    printf("%d\n",VA_LENGTH(a));
-    printf("%d\n",VA_LENGTH());
+#define TESTALIGN(n,a,r)                                       \
+    printf("align %lu,%lu => %lu (%s)\n",                      \
+           (uintmax_t)(n), (uintmax_t)a,                       \
+           (uintmax_t)ALIGN(n,a),                              \
+           PASSFAIL(ALIGN(n,a)==(r)) );                        \
+    if (ALIGN(n,a)!=(r)) fail++;
 
-    printf("GRAN\n");
-    TESTGRAN(0);
-    TESTGRAN(1);
-    TESTGRAN(13);
-    TESTGRAN(15);
-    TESTGRAN(16);
-    TESTGRAN(17);
-    TESTGRAN(18);
-    TESTGRAN(31);
-    TESTGRAN(32);
-    TESTGRAN(1000);
+int test_align() {
+    printf("\n\n====== Testing Alignment ======\n");
+    int fail = 0;
+
+    TESTALIGN(0,4,0);
+    TESTALIGN(1,4,4);
+    TESTALIGN(2,4,4);
+    TESTALIGN(3,4,4);
+    TESTALIGN(4,4,4);
+    TESTALIGN(5,4,8);
+
+    TESTALIGN(1000,16,1008);
+    TESTALIGN(1024,256,1024);
+
+    TESTALIGN(0x100000000LL,0x80000000,0x100000000LL);
+    TESTALIGN(0x100000000LL,0x100000000LL,0x100000000LL);
+    TESTALIGN(0x100000001LL,0x100000000LL,0x200000000LL);
+
+    TESTALIGN(0xFFFFFFEDLL,0x1000,0x100000000LL);
+    TESTALIGN(0xFFFFFFED,0x1000,0);
+
+    size_t a = 0xFFFFFFEDLL;
+    TESTALIGN(a,0x1000,0x100000000LL);
+    uint32_t b = 0xFFFFFFEDLL;
+    TESTALIGN(b,0x1000,0);
+
+#if 0
+    uint16_t c = 0xFFED;
+    TESTALIGN(c,0x1000,0);
+#endif
+
+    TESTALIGN(0x100001234LL,0x1000,0x100002000LL);
+    TESTALIGN(0x100001234LL,0x100,0x100001300LL);
+    TESTALIGN(0x100001234LL,0x10,0x100001240LL);
+
+#if 0
+    TESTALIGN(123,100,200);
+    TESTALIGN(12345,100,12400);
+    TESTALIGN(1234567,100,1234600);
+    TESTALIGN(12345678,100,12345700);
+    TESTALIGN(123456789,100,123456800);
+    TESTALIGN(123456789123456789LL,1000,123456789123457000LL);
+#endif
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
 }
 
-void test_clear() {
-    printf("Testing clear macros\n");
+#define TEST_CLEAR(name,ptr,n,neg) {                        \
+        int i,f=0;                                          \
+        for (i=0; i<n; i++)                                 \
+            if (neg ? !*((ptr)+i) : *((ptr)+i)) {           \
+                printf("%c %d\n",*((ptr)+i),neg);           \
+                f++;                                        \
+            }                                               \
+        fail += f;                                          \
+        printf( "%s : %s\n", name, PASSFAIL(!f));           \
+    }
+
+
+int test_clear() {
+    printf("\n\n====== Testing clear macros ======\n");
+    int fail = 0;
+
     char str[] = "ABCDEF";
-    char *s = strdup("GHIJKL");
+    char *s1 = strdup("GHIJKL");
+    char *s2 = strdup("MNOPQR");
+    char *s3 = strdup("abcdefghijklmnop");
 
-    printf("CLEAR\n");
-    hexdump(str,sizeof(str));
     CLEAR(str);
-    hexdump(str,sizeof(str));
+    TEST_CLEAR("CLEAR",str,6,0);
+    CLEARP(s1);
+    TEST_CLEAR("CLEARP",s1,1,0);
+    CLEARN(s2,4);
+    TEST_CLEAR("CLEARN",s2,4,0);
+    TEST_CLEAR("CLEARN",s2+4,2,1);
+    CLEAR_RANGE(s3,3,7);
+    TEST_CLEAR("CLEAR_RANGE",s3,3,1);
+    TEST_CLEAR("CLEAR_RANGE",s3+3,7,0);
+    TEST_CLEAR("CLEAR_RANGE",s3+10,6,1);
 
-    printf("CLEARP\n");
-    hexdump(s,6);
-    CLEARP(s);
-    hexdump(s,6);
+    free(s1);
+    free(s2);
+    free(s3);
 
-    printf("CLEARN\n");
-    CLEARN(s,4);
-    hexdump(s,6);
-
-    free(s);
-
-    s = strdup("MNOPQRSTUVWXYZ");
-    printf("CLEAR_RANGE\n");
-    hexdump(s,14);
-    CLEAR_RANGE(s,4,5);
-    hexdump(s,14);
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
 }
 
+#define TEST_ALLOC(name, ptr, size) {                   \
+        int i,f=0;                                      \
+        uint8_t *p = (uint8_t *)ptr;                    \
+        memset(p, 0, size);                             \
+        for(i=0;i<size;i++)                             \
+            f += (p[i]!=0);                             \
+        memset(p, 0xAA, size);                          \
+        for(i=0;i<size;i++)                             \
+            f += (p[i]!=0xAA);                          \
+        fail += f;                                      \
+        printf("%s: %s\n", name, PASSFAIL(!f));         \
+    }
+
+int test_alloc() {
+    printf("\n\n====== Testing allocation macros ======\n");
+    int fail = 0;
+    
+    CREATE(vertex,v);
+    TEST_ALLOC("CREATE",v,sizeof(vertex));
+    CREATEN(face,fc,30);
+    TEST_ALLOC("CREATEN",fc,sizeof(face)*30);
+    CREATEB(buf,100);
+    TEST_ALLOC("CREATEB",buf,100);
+
+    free(v);
+    free(fc);
+    free(buf);
+
+    ALLOC(v);
+    TEST_ALLOC("ALLOC",v,sizeof(vertex));
+    ALLOCN(fc,80);
+    TEST_ALLOC("ALLOCN",fc,sizeof(face)*80);
+    ALLOCB(buf,10000);
+    TEST_ALLOC("ALLOCB",buf,10000);
+
+    free(v);
+    free(fc);
+    free(buf);
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+int test_arrays() {
+    printf("\n\n====== Testing expandable arrays ======\n");
+    int fail = 0;
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+#if 0
+////////////////////////////////////////////////////////////////////////////////
 
 void test_buffers() {
     printf("Testing buffers\n");
@@ -617,16 +724,24 @@ void test_dns() {
     TESTDNS("slashdot.org");
 }
 
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
 int main(int ac, char **av) {
 #if DEBUG_MEMORY
     mtrace();
 #endif
-    int i;
-    // for (i=0; i<10000000; i++) test_swap();
 
-    //test_pp();
-    //test_clear();
-    //test_buffers();
+    //// lh_buffers.h
+    test_align();
+    test_clear();
+    test_alloc();
+    test_arrays();
+
+
+
+
     //test_multiarrays();
     //test_files();
     //test_compression();
@@ -638,7 +753,7 @@ int main(int ac, char **av) {
     //test_server();
     //test_event();
 
-    test_dns();
+    //test_dns();
 
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));
