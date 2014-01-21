@@ -1,4 +1,68 @@
+/*! \file
+ * Macros for reading and writing byte streams and swapping bytes
+ */
+
 #pragma once
+
+////////////////////////////////////////////////////////////////////////////////
+/**
+ * @name ByteSwappingMacros
+ * Byte swapping macros
+ */
+
+static inline uint16_t lh_bswap_short(uint16_t v) {
+#ifdef HAVE_BUILTIN_BSWAP16
+    return __builtin_bswap16(v);
+#else
+    return (v>>8)|(v<<8);
+#endif
+}
+
+static inline uint32_t lh_bswap_int(uint32_t v) {
+#ifdef HAVE_BUILTIN_BSWAP32
+    return __builtin_bswap32(v);
+#else
+    return (v<<24) | (v<<8 & 0xff0000) | (v>>8 & 0xff00) | (v>>24);
+#endif
+}
+
+static inline uint64_t lh_bswap_long(uint64_t v) {
+#ifdef HAVE_BUILTIN_BSWAP64
+    return __builtin_bswap64(v);
+#else
+    return
+        (v << 56) |                            \
+        ((v & 0x000000000000ff00ULL) << 40) |  \
+        ((v & 0x0000000000ff0000ULL) << 24) |  \
+        ((v & 0x00000000ff000000ULL) <<  8) |  \
+        ((v & 0x000000ff00000000ULL) >>  8) |  \
+        ((v & 0x0000ff0000000000ULL) >> 24) |  \
+        ((v & 0x00ff000000000000ULL) >> 40) |  \
+        (v >> 56);
+#endif
+}
+
+static inline float lh_bswap_float(float v) {
+    union {
+        float vf;
+        uint32_t vi;
+    } S;
+    S.vf = v;
+    S.vi = lh_bswap_int(S.vi);
+    return S.vf;
+}
+
+static inline double lh_bswap_double(double v) {
+    union {
+        double vd;
+        uint64_t vl;
+    } S;
+    S.vd = v;
+    S.vl = lh_bswap_long(S.vl);
+    return S.vd;
+}
+
+#if 0
 
 ////////////////////////////////////////////////////////////////////////////////
 // Extraction of values from a byte stream
@@ -355,56 +419,16 @@ static inline uint8_t * place_double(char *p, double v) {
 #define write_float(p,v)   place_float(p,v);   p+=4
 #define write_double(p,v)  place_double(p,v);  p+=8
 
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint16_t swap_short(uint16_t v) {
-#ifdef HAVE_BUILTIN_BSWAP16
-    return __builtin_bswap16(v);
-#else
-    return (v>>8)|(v<<8);
+#ifdef LH_DECLARE_SHORT_NAMES
+
+#define bswap_short(v)                  lh_bswap_short(v)
+#define bswap_int(v)                    lh_bswap_int(v)
+#define bswap_long(v)                   lh_bswap_long(v)
+#define bswap_float(v)                  lh_bswap_float(v)
+#define bswap_double(v)                 lh_bswap_double(v)
+
 #endif
-}
-
-static inline uint32_t swap_int(uint32_t v) {
-#ifdef HAVE_BUILTIN_BSWAP32
-    return __builtin_bswap32(v);
-#else
-    return (v<<24) | (v<<8 & 0xff0000) | (v>>8 & 0xff00) | (v>>24);
-#endif
-}
-
-static inline uint64_t swap_long(uint64_t v) {
-#ifdef HAVE_BUILTIN_BSWAP64
-    return __builtin_bswap64(v);
-#else
-    return
-        (v << 56) |                            \
-        ((v & 0x000000000000ff00ULL) << 40) |  \
-        ((v & 0x0000000000ff0000ULL) << 24) |  \
-        ((v & 0x00000000ff000000ULL) <<  8) |  \
-        ((v & 0x000000ff00000000ULL) >>  8) |  \
-        ((v & 0x0000ff0000000000ULL) >> 24) |  \
-        ((v & 0x00ff000000000000ULL) >> 40) |  \
-        (v >> 56);
-#endif
-}
-
-static inline float swap_float(float v) {
-    union {
-        float vf;
-        uint32_t vi;
-    } S;
-    S.vf = v;
-    S.vi = swap_int(S.vi);
-    return S.vf;
-}
-
-static inline double swap_double(double v) {
-    union {
-        double vd;
-        uint64_t vl;
-    } S;
-    S.vd = v;
-    S.vl = swap_long(S.vl);
-    return S.vd;
-}
