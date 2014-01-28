@@ -5,7 +5,8 @@ LIBS=-lz -lpng #$(LIBSSOL)
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=1
 AR=ar
 
-LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o lh_net.o lh_event.o
+#LIBOBJ=lh_files.o lh_debug.o lh_compress.o lh_image.o lh_net.o lh_event.o
+LIBOBJ=lh_debug.o
 
 all: test libhelper.a
 

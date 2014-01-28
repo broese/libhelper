@@ -112,6 +112,11 @@
  * to data and 'cnt' - an integer variable holding the count of elements.
  * The macros perform allocating and resizing of these arrays. Allocation
  * granularity can be additionally specified in the granular versions.
+ *
+ * NOTE: You <b>must always</b> use same granularity when allocating and
+ * reallocating an array throughout its lifetime. If you increase the
+ * granularity, you risk memory corruption as the fucntions will make a
+ * wrong assumption about the allocated size.
  */
 
 /*! \brief Resize the allocted memory of an array to a given number of elements.
@@ -119,7 +124,7 @@
  * \param num New number of elements to be available after allocation
  */
 #define lh_resize(ptr, num)                     \
-    ptr = realloc(ptr, num*sizeof(*ptr));
+    ptr = realloc(ptr, num*sizeof(*ptr));       \
 
 /*! \brief Declare an expandable array. Variables are initialized but
  * no memory is llocated
@@ -156,10 +161,10 @@
  * \param gran Granularity of allocation, must be power of 2
  */
 #define lh_array_resize_g(ptr,cnt,num,gran) {                           \
-        if (lh_align((num),(gran)) > lh_align((cnt),(gran)))            \
+        if (lh_align((num),(gran)) > lh_align((cnt),(gran))) {          \
             lh_resize((ptr),lh_align((num),(gran)));                    \
-        if (lh_align((num),gran) > (cnt))                               \
-            lh_clear_range((ptr), (cnt), (num)-(cnt));                  \
+            lh_clear_range((ptr), (cnt), (lh_align((num),gran))-(cnt)); \
+        }                                                               \
         cnt=num;                                                        \
     }
 
@@ -169,8 +174,8 @@
  * \param num Number of elements to be added
  * \param gran Granularity of allocation, must be power of 2
  */
-#define lh_array_addg(ptr,cnt,num,gran) \
-    lh_array_resize(ptr,cnt,((cnt)+(num)),gran)
+#define lh_array_add_g(ptr,cnt,num,gran)            \
+    lh_array_resize_g(ptr,cnt,((cnt)+(num)),gran)
 
 /*! \brief Allocate array (non-granular version) */
 #define lh_array_allocate(ptr,cnt,num)   lh_array_allocate_g(ptr,cnt,num,1)
@@ -204,15 +209,24 @@
 #define lh_array_delete_element_nu(ptr, cnt, idx)   \
     lh_array_delete_range_nu(ptr, cnt, idx, 1)
 
-/*! \brief Delete range of elements and update cnt to resize the array */
+/*! \brief Delete range of elements and update cnt to resize the array
+ * \param ptr Name of the pointer variable
+ * \param cnt Name of the counter variable
+ * \param from Index of the first element to delete
+ * \param num Number of elements to delete
+ */
 #define lh_array_delete_range(ptr, cnt, from, num) {                    \
         lh_array_delete_range_nu(ptr, cnt, from, num);                  \
         cnt -= num;                                                     \
     }
 
-/*! \brief Delete a single element and update cnt to resize the array */
-#define lh_array_delete_element(ptr, cnt, from, num)    \
-    lh_array_delete_range(ptr, cnt, from, 1)
+/*! \brief Delete a single element and update cnt to resize the array
+ * \param ptr Name of the pointer variable
+ * \param cnt Name of the counter variable
+ * \param idx Index of the element to delete
+ */
+#define lh_array_delete_element(ptr, cnt, idx) \
+    lh_array_delete_range(ptr, cnt, idx, 1)
 
 ////////////////////////////////////////////////////////////////////////////////
 

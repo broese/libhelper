@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#if 0
 #include <math.h>
 
+#if 0
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -20,6 +20,8 @@
 #define LH_DECLARE_SHORT_NAMES 1
 
 #include "lh_buffers.h"
+#include "lh_bytes.h"
+
 #if 0
 #include "lh_files.h"
 #include "lh_compress.h"
@@ -191,14 +193,101 @@ int test_alloc() {
     return fail;
 }
 
+#define TEST_ARRAY(name,ptr,cnt,check) {                \
+        int sum=0,i,f=0;                                \
+        for(i=0; i<cnt; i++) sum += (int)ptr[i];        \
+        f = (sum != (check));                           \
+        fail += f;                                      \
+        printf("%s: %s\n", name, PASSFAIL(!f));         \
+    }
+        
 
 int test_arrays() {
     printf("\n\n====== Testing expandable arrays ======\n");
     int fail = 0;
+
+    int i,s;
+
+    lh_buffer(buf,buflen);
+    lh_array_allocate_g(buf,buflen,200,16);
+    for(i=0; i<buflen; i++) buf[i] = (uint8_t)i;
+    TEST_ARRAY("lh_array_allocate_g",buf,buflen,199*buflen/2);
+
+    for(i=200; i<1000; i++) {
+        lh_array_resize_g(buf,buflen,i+1,16);
+        buf[i] = (uint8_t)i;
+    }
+    for(i=0,s=0; i<1000; i++) s+=(uint8_t)i;
+    TEST_ARRAY("lh_array_add_g",buf,buflen,sum);
+
+    lh_array_delete_element(buf,buflen,700);
+    lh_array_delete_element(buf,buflen,500);
+    lh_array_delete_element(buf,buflen,300);
+    TEST_ARRAY("lh_array_delete_element",buf,buflen,s-(700%256)-(500%256)-(300%256));
+
+    lh_array_delete_range(buf,buflen,100,5);
+    TEST_ARRAY("lh_array_delete_element",buf,buflen,s-100-101-102-103-104-(700%256)-(500%256)-(300%256));
     
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define TEST_BSWAP(func,a,b) {                      \
+        int f=0;                                    \
+        f = ( func(a) != b );                       \
+        fail += f;                                  \
+        printf("%s: %s\n", #func, PASSFAIL(!f));    \
+    }
+
+int test_bswap() {
+    printf("\n\n====== Testing byteswap functions ======\n");
+    int fail = 0;
+
+    union {
+        float vf;
+        uint32_t vi;
+    } F;
+
+    float f1 = (float) M_PI;
+    F.vf = f1;
+    F.vi = bswap_int(F.vi);
+    float f2 = F.vf;
+
+    union {
+        double vd;
+        uint64_t vl;
+    } D;
+
+    double d1 = M_PI;
+    D.vd = d1;
+    D.vl = bswap_long(D.vl);
+    double d2 = D.vd;
+
+    TEST_BSWAP(bswap_short, 0x1234,0x3412);
+    TEST_BSWAP(bswap_int,   0x12345678,0x78563412);
+    TEST_BSWAP(bswap_long,  0x123456789ABCDEF0LL,0xF0DEBC9A78563412LL);
+    TEST_BSWAP(bswap_float, f1,f2);
+    TEST_BSWAP(bswap_double,d1,d2);
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #if 0
@@ -738,6 +827,9 @@ int main(int ac, char **av) {
     test_clear();
     test_alloc();
     test_arrays();
+
+    //// lh_bytes.h
+    test_bswap();
 
 
 
