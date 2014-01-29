@@ -13,8 +13,10 @@
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_MTRACE
 #if DEBUG_MEMORY
 #include <mcheck.h>
+#endif
 #endif
 
 #define LH_DECLARE_SHORT_NAMES 1
@@ -54,12 +56,13 @@ typedef struct model {
 
 #define PASSFAIL(cond) ( (cond) ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m" )
 
-#define TESTALIGN(n,a,r)                                       \
-    printf("align %lu,%lu => %lu (%s)\n",                      \
-           (uintmax_t)(n), (uintmax_t)a,                       \
-           (uintmax_t)ALIGN(n,a),                              \
-           PASSFAIL(ALIGN(n,a)==(r)) );                        \
+#define TESTALIGN(n,a,r)                                        \
+    printf("align %ju,%ju => %ju (%s)\n",                    \
+           (uintmax_t)(n), (uintmax_t)a, (uintmax_t)ALIGN(n,a), \
+           PASSFAIL(ALIGN(n,a)==(r))                            \
+    );                                                          \
     if (ALIGN(n,a)!=(r)) fail++;
+
 
 int test_align() {
     printf("\n\n====== Testing Alignment ======\n");
@@ -82,7 +85,7 @@ int test_align() {
     TESTALIGN(0xFFFFFFEDLL,0x1000,0x100000000LL);
     TESTALIGN(0xFFFFFFED,0x1000,0);
 
-    size_t a = 0xFFFFFFEDLL;
+    uint64_t a = 0xFFFFFFEDLL;
     TESTALIGN(a,0x1000,0x100000000LL);
     uint32_t b = 0xFFFFFFEDLL;
     TESTALIGN(b,0x1000,0);
@@ -818,9 +821,13 @@ void test_dns() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int ac, char **av) {
+#ifdef HAVE_MTRACE
 #if DEBUG_MEMORY
     mtrace();
 #endif
+#endif
+    printf("sizeof(uintmax_t) = %u\n",sizeof(uintmax_t));
+
 
     //// lh_buffers.h
     test_align();
@@ -850,8 +857,10 @@ int main(int ac, char **av) {
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));
 
+#ifdef HAVE_MTRACE
 #if DEBUG_MEMORY
     muntrace();
+#endif
 #endif
     return 0;
 }
