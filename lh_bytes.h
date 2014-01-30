@@ -10,6 +10,10 @@
  * Byte swapping macros
  */
 
+/*! \brief Byte-swap a 16-bit value
+ * \param v Source value
+ * \return Byte-swapped value
+ */
 static inline uint16_t lh_bswap_short(uint16_t v) {
 #ifdef HAVE_BUILTIN_BSWAP16
     return __builtin_bswap16(v);
@@ -18,6 +22,10 @@ static inline uint16_t lh_bswap_short(uint16_t v) {
 #endif
 }
 
+/*! \brief Byte-swap a 32-bit value
+ * \param v Source value
+ * \return Byte-swapped value
+ */
 static inline uint32_t lh_bswap_int(uint32_t v) {
 #ifdef HAVE_BUILTIN_BSWAP32
     return __builtin_bswap32(v);
@@ -26,6 +34,10 @@ static inline uint32_t lh_bswap_int(uint32_t v) {
 #endif
 }
 
+/*! \brief Byte-swap a 64-bit value
+ * \param v Source value
+ * \return Byte-swapped value
+ */
 static inline uint64_t lh_bswap_long(uint64_t v) {
 #ifdef HAVE_BUILTIN_BSWAP64
     return __builtin_bswap64(v);
@@ -42,6 +54,10 @@ static inline uint64_t lh_bswap_long(uint64_t v) {
 #endif
 }
 
+/*! \brief Byte-swap a 32-bit float value
+ * \param v Source value
+ * \return Byte-swapped value
+ */
 static inline float lh_bswap_float(float v) {
     union {
         float vf;
@@ -52,6 +68,10 @@ static inline float lh_bswap_float(float v) {
     return S.vf;
 }
 
+/*! \brief Byte-swap a 64-bit double value
+ * \param v Source value
+ * \return Byte-swapped value
+ */
 static inline double lh_bswap_double(double v) {
     union {
         double vd;
@@ -62,75 +82,105 @@ static inline double lh_bswap_double(double v) {
     return S.vd;
 }
 
-#if 0
+/**
+ * @name InplaceByteSwapMacros
+ * Perform byteswap in-place
+ */
+#define lh_ibswap_short(v)  v=lh_bswap_short(v)
+#define lh_ibswap_int(v)    v=lh_bswap_int(v)
+#define lh_ibswap_long(v)   v=lh_bswap_long(v)
+#define lh_ibswap_float(v)  v=lh_bswap_float(v)
+#define lh_ibswap_double(v) v=lh_bswap_double(v)
 
 ////////////////////////////////////////////////////////////////////////////////
-// Extraction of values from a byte stream
+
+/**
+ * @name ParseBytestream
+ * Functions for parsing values from a bytestream
+ */
 
 #define GETF *t++ = *p++
 #define GETR *t-- = *p++
 
-static inline int8_t parse_char(const char *p) {
-    return *p;
-}
+#define GETF2 GETF;GETF
+#define GETR2 GETR;GETR
+#define GETF4 GETF2;GETF2
+#define GETR4 GETR2;GETR2
+#define GETF8 GETF4;GETF4
+#define GETR8 GETR4;GETR4
+#define GETFM(n) GETF ## n
+#define GETRM(n) GETR ## n
 
-// Big-Endian extraction (aka network order)
+// Note: we are using a "statement expression" ( { } ) to turn
+// a block into an expression. This is a GCC-specific extension,
+// not standard C
+//FIXME: introduce a C-standard variant of this macro, distinguish with #ifdef __GNU_C
 
-static inline int16_t parse_short(const char *p) {
-    union {
-        char buf[2];
-        int16_t val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[1];
-    GETR; GETR;
+#if __BYTE_ORDER == __LITTLE_ENDIAN     
+#define lh_parse_be(ptr,type,size) ( {          \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[size-1];       \
+        GETRM(size);                            \
+        temp.value; } )
+#define lh_parse_le(ptr,type,size) ( {          \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[0];            \
+        GETFM(size);                            \
+        temp.value; } )
 #else
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-#endif
-    return temp.val;
-}
+#define lh_parse_be(ptr,type,size) ( {          \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[0];            \
+        GETFM(size);                            \
+        temp.value; } )
+#define lh_parse_le(ptr,type,size) ( {          \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[size-1];       \
+        GETRM(size);                            \
+        temp.value; } )
+#endif                                  
 
-static inline int32_t parse_int(const char *p) {
-    union {
-        char buf[4];
-        int32_t val;
-    } temp;
+#define lh_parse_char_be(ptr)   *ptr
+#define lh_parse_char_le(ptr)   *ptr
+#define lh_parse_short_be(ptr)  lh_parse_be(ptr,uint16_t,2)
+#define lh_parse_short_le(ptr)  lh_parse_le(ptr,uint16_t,2)
+#define lh_parse_int_be(ptr)    lh_parse_be(ptr,uint32_t,4)
+#define lh_parse_int_le(ptr)    lh_parse_le(ptr,uint32_t,4)
+#define lh_parse_long_be(ptr)   lh_parse_be(ptr,uint64_t,8)
+#define lh_parse_long_le(ptr)   lh_parse_le(ptr,uint64_t,8)
+#define lh_parse_float_be(ptr)  lh_parse_be(ptr,float,4)
+#define lh_parse_float_le(ptr)  lh_parse_le(ptr,float,4)
+#define lh_parse_double_be(ptr) lh_parse_be(ptr,double,8)
+#define lh_parse_double_le(ptr) lh_parse_le(ptr,double,8)
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[3];
-    GETR; GETR;
-    GETR; GETR;
-#else
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-#endif
-    return temp.val;
-}
 
-static inline int64_t parse_long(const char *p) {
-    union {
-        char buf[8];
-        int64_t val;
-    } temp;
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[7];
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-#else
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-#endif
-    return temp.val;
-}
+
+
+
+
+
+
+
+
+#if 0
+
 
 #define read_char(p)  parse_char(p);  (p)++
 #define read_short(p) parse_short(p); (p)+=2

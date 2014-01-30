@@ -20,7 +20,7 @@ test: main.o $(LIBOBJ)
 .c.o:
 	$(CC) $(CFLAGS) $(DEFS) $(CONFIG) -o $@ -c $<
 
-main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h
+main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h config.h
 
 clean:
 	rm -f *.o *~

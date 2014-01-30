@@ -276,9 +276,36 @@ int test_bswap() {
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
-}  
+}
 
+#define TEST_PARSE(type,val,check) {                            \
+        int f = (val != check);                                 \
+        fail += f;                                              \
+        printf("%s: %s\n", "lh_parse_" #type, PASSFAIL(!f));    \
+    }
 
+int test_stream() {
+    printf("\n\n====== Testing bytestream reading ======\n");
+    int fail = 0;
+
+    uint8_t buf[8] = { 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0 };
+
+    uint8_t vc = lh_parse_char_be(buf);
+    TEST_PARSE(char_be,vc,0x12);
+
+    uint16_t vs = lh_parse_short_be(buf);
+    TEST_PARSE(short_be,vs,0x1234);
+
+    uint32_t vi = lh_parse_int_be(buf);
+    TEST_PARSE(int_be,vi,0x12345678);
+
+    uint64_t vl = lh_parse_long_be(buf);
+    TEST_PARSE(long_be,vl,0x123456789ABCDEF0);
+
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
 
 
 
@@ -826,8 +853,6 @@ int main(int ac, char **av) {
     mtrace();
 #endif
 #endif
-    printf("sizeof(uintmax_t) = %u\n",sizeof(uintmax_t));
-
 
     //// lh_buffers.h
     test_align();
@@ -837,6 +862,7 @@ int main(int ac, char **av) {
 
     //// lh_bytes.h
     test_bswap();
+    test_stream();
 
 
 
@@ -846,7 +872,6 @@ int main(int ac, char **av) {
     //test_compression();
     //test_image2();
     //test_image_resize();
-    //test_stream();
     //test_wstream();
 
     //test_server();
