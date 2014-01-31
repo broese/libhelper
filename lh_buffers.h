@@ -24,7 +24,7 @@
  * \return Aligned number
  */
 #define lh_align(num,align)                            \
-    ((((num)-1)|(((typeof(num))align)-1)) + 1)
+    ((((num)-1)|(((__typeof__(num))align)-1)) + 1)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**

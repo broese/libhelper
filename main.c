@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-
 #include <math.h>
 
 #if 0
@@ -57,7 +56,7 @@ typedef struct model {
 #define PASSFAIL(cond) ( (cond) ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m" )
 
 #define TESTALIGN(n,a,r)                                        \
-    printf("align %ju,%ju => %ju (%s)\n",                    \
+    printf("align %ju,%ju => %ju (%s)\n",                       \
            (uintmax_t)(n), (uintmax_t)a, (uintmax_t)ALIGN(n,a), \
            PASSFAIL(ALIGN(n,a)==(r))                            \
     );                                                          \
@@ -300,9 +299,8 @@ int test_stream() {
     TEST_PARSE(int_be,vi,0x12345678);
 
     uint64_t vl = lh_parse_long_be(buf);
-    TEST_PARSE(long_be,vl,0x123456789ABCDEF0);
+    TEST_PARSE(long_be,vl,0x123456789ABCDEF0LL);
 
-    
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }

@@ -1,4 +1,4 @@
-CC=gcc
+CC=gcc -std=gnu99
 CFLAGS=-g -pg
 LIBSSOL=-lsocket -lnsl
 LIBS=-lz -lpng #$(LIBSSOL)
