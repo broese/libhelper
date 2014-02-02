@@ -102,6 +102,8 @@ static inline double lh_bswap_double(double v) {
 #define GETF *t++ = *p++
 #define GETR *t-- = *p++
 
+#define GETF1 GETF
+#define GETR1 GETR
 #define GETF2 GETF;GETF
 #define GETR2 GETR;GETR
 #define GETF4 GETF2;GETF2
@@ -117,6 +119,7 @@ static inline double lh_bswap_double(double v) {
 //FIXME: introduce a C-standard variant of this macro, distinguish with #ifdef __GNU_C
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN     
+
 #define lh_parse_be(ptr,type,size) ( {          \
         union {                                 \
             uint8_t bytes[size];                \
@@ -135,7 +138,9 @@ static inline double lh_bswap_double(double v) {
         uint8_t *t = &temp.bytes[0];            \
         GETFM(size);                            \
         temp.value; } )
+
 #else
+
 #define lh_parse_be(ptr,type,size) ( {          \
         union {                                 \
             uint8_t bytes[size];                \
@@ -154,6 +159,7 @@ static inline double lh_bswap_double(double v) {
         uint8_t *t = &temp.bytes[size-1];       \
         GETRM(size);                            \
         temp.value; } )
+
 #endif                                  
 
 #define lh_parse_char_be(ptr)   *ptr
@@ -169,10 +175,58 @@ static inline double lh_bswap_double(double v) {
 #define lh_parse_double_be(ptr) lh_parse_be(ptr,double,8)
 #define lh_parse_double_le(ptr) lh_parse_le(ptr,double,8)
 
+////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @name ReadByteStream
+ * Macros that parse the byte stream for data and then advance the reading pointer
+ */
+#define lh_read_be(ptr,type,size)                                       \
+    ( { type temp = lh_parse_be(ptr,type,size); ptr+=size; temp; } )
+#define lh_read_le(ptr,type,size)                                       \
+    ( { type temp = lh_parse_le(ptr,type,size); ptr+=size; temp; } )
 
+#define lh_read_char_be(ptr)    *ptr++
+#define lh_read_char_le(ptr)    lh_read_char_be(ptr)
+#define lh_read_short_be(ptr)   lh_read_be(ptr,uint16_t,2)
+#define lh_read_short_le(ptr)   lh_read_le(ptr,uint16_t,2)
+#define lh_read_int_be(ptr)     lh_read_be(ptr,uint32_t,4)
+#define lh_read_int_le(ptr)     lh_read_le(ptr,uint32_t,4)
+#define lh_read_long_be(ptr)    lh_read_be(ptr,uint64_t,8)
+#define lh_read_long_le(ptr)    lh_read_le(ptr,uint64_t,8)
+#define lh_read_float_be(ptr)   lh_read_be(ptr,float,4)
+#define lh_read_float_le(ptr)   lh_read_le(ptr,float,4)
+#define lh_read_double_be(ptr)  lh_read_be(ptr,double,8)
+#define lh_read_double_le(ptr)  lh_read_le(ptr,double,8)
 
+////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @name ReadLimitByteStream
+ * Macros for reading the byte stream with limit checking
+ */
+#define lh_lread_be(ptr,lim,type,var,size,fail) \
+    if (lim-ptr < size) { fail; }               \
+    type var = lh_read_be(ptr,type,size);
+#define lh_lread_le(ptr,lim,type,var,size,fail) \
+    if (lim-ptr < size) { fail; }               \
+    type var = lh_read_le(ptr,type,size);
+
+#define lh_lread_char_be(ptr,lim,var,fail)      \
+    if (lim==ptr) { fail; }                     \
+    uint8_t var = *ptr++;
+#define lh_lread_char_le(ptr,lim,var,fail)    lh_lread_char_be(ptr,lim,var,fail)
+
+#define lh_lread_short_be(ptr,lim,var,fail)   lh_lread_be(ptr,lim,uint16_t,var,2,fail)
+#define lh_lread_short_le(ptr,lim,var,fail)   lh_lread_le(ptr,lim,uint16_t,var,2,fail)
+#define lh_lread_int_be(ptr,lim,var,fail)     lh_lread_be(ptr,lim,uint32_t,var,4,fail)
+#define lh_lread_int_le(ptr,lim,var,fail)     lh_lread_le(ptr,lim,uint32_t,var,4,fail)
+#define lh_lread_long_be(ptr,lim,var,fail)    lh_lread_be(ptr,lim,uint64_t,var,8,fail)
+#define lh_lread_long_le(ptr,lim,var,fail)    lh_lread_le(ptr,lim,uint64_t,var,8,fail)
+#define lh_lread_float_be(ptr,lim,var,fail)   lh_lread_be(ptr,lim,float,var,4,fail)
+#define lh_lread_float_le(ptr,lim,var,fail)   lh_lread_le(ptr,lim,float,var,4,fail)
+#define lh_lread_double_be(ptr,lim,var,fail)  lh_lread_be(ptr,lim,double,var,8,fail)
+#define lh_lread_double_le(ptr,lim,var,fail)  lh_lread_le(ptr,lim,double,var,8,fail)
 
 
 

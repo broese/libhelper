@@ -278,28 +278,91 @@ int test_bswap() {
 }
 
 #define TEST_PARSE(type,val,check) {                            \
-        int f = (val != check);                                 \
+        f = (val != check);                                 \
         fail += f;                                              \
-        printf("%s: %s\n", "lh_parse_" #type, PASSFAIL(!f));    \
+        printf("%s: %s\n", "lh_" #type, PASSFAIL(!f));    \
     }
+
+#define Rx(type,var) lh_lread_ ##type##_be(ptr,lim,var, { atlimit=1; break; })
+#define Rchar(var)  Rx(char,var)
+#define Rshort(var) Rx(short,var)
+#define Rint(var)   Rx(int,var)
+#define Rlong(var)  Rx(long,var)
+
+#define TEST_LREAD(len,rlen,v_atlimit,v_rc,v_rs,v_ri,v_rl)  \
+    ptr = buf;                                          \
+    lim = ptr+len;                                      \
+    atlimit=0;                                          \
+    do {                                                \
+        Rchar(rc);                                      \
+        Rshort(rs);                                     \
+        Rint(ri);                                       \
+        Rlong(rl);                                      \
+        f = (rc!=v_rc) || (rs!=v_rs) ||                 \
+            (ri!=v_ri) || (rl!=v_rl);                   \
+    } while(0);                                         \
+    f += (ptr != buf+rlen);                             \
+    if (atlimit) f=0;                                   \
+    f += (atlimit!=v_atlimit);                          \
+    fail += f;                                          \
+    printf("lh_lread len=%d %s\n", len, PASSFAIL(!f));
+
+
 
 int test_stream() {
     printf("\n\n====== Testing bytestream reading ======\n");
-    int fail = 0;
+    int fail = 0, f;
 
-    uint8_t buf[8] = { 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0 };
+    uint8_t buf[64] = { 
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+    };
 
     uint8_t vc = lh_parse_char_be(buf);
-    TEST_PARSE(char_be,vc,0x12);
+    TEST_PARSE(parse_char_be,vc,0x12);
 
     uint16_t vs = lh_parse_short_be(buf);
-    TEST_PARSE(short_be,vs,0x1234);
+    TEST_PARSE(parse_short_be,vs,0x1234);
 
     uint32_t vi = lh_parse_int_be(buf);
-    TEST_PARSE(int_be,vi,0x12345678);
+    TEST_PARSE(parse_int_be,vi,0x12345678);
 
     uint64_t vl = lh_parse_long_be(buf);
-    TEST_PARSE(long_be,vl,0x123456789ABCDEF0LL);
+    TEST_PARSE(parse_long_be,vl,0x123456789ABCDEF0LL);
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    uint8_t *ptr = buf;
+
+    vc = lh_read_char_be(ptr);
+    TEST_PARSE(read_char_be,vc,0x12);
+
+    vs = lh_read_short_be(ptr);
+    TEST_PARSE(read_short_be,vs,0x3456);
+
+    vi = lh_read_int_be(ptr);
+    TEST_PARSE(read_int_be,vi,0x789abcde);
+
+    vl = lh_read_long_be(ptr);
+    TEST_PARSE(read_long_be,vl,0xf0123456789abcdeLL);
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    uint8_t *lim;
+    int atlimit;
+
+    TEST_LREAD(15,15,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+    TEST_LREAD(14,15,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+    TEST_LREAD(7,7,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+    TEST_LREAD(30,15,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+
+    
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -321,97 +384,6 @@ int test_stream() {
 #if 0
 ////////////////////////////////////////////////////////////////////////////////
 
-void test_buffers() {
-    printf("Testing buffers\n");
-
-#if 0
-
-    unsigned char *str, buffer[4096];
-    int n;
-
-    BUFFER_ALLOCG(str,n,1,BUF_GRAN);
-    str[0] = 0;
-
-    while(1) {
-        printf("Enter next string: ");
-        fgets(buffer,sizeof(buffer),stdin);
-        if (!strncmp(buffer,"END",3)) break;
-
-        int pos = n-1;
-        int len = strlen(buffer);
-        BUFFER_ADDG(str,n,len,BUF_GRAN);
-        memcpy(str+pos,buffer,len);
-        str[n-1]=0;
-    }
-
-    printf("Total length: %d\n%s\n",n-1,str);
-#endif
-
-#if 0
-    ARRAY(face,f,nf);
-    ARRAY_ALLOCG(f, nf, 3, 4);
-
-    f[0].a = 1; f[0].b = 2; f[0].c = 3;
-    f[1].a = 11; f[1].b = 12; f[1].c = 13;EVFILE_READ_GRAN
-    f[2].a = 21; f[2].b = 22; f[2].c = 23;
-
-    printf("f=%08p nf=%d\n",f,nf);
-    hexdump((unsigned char *)f, nf*sizeof(*f));
-
-    ARRAY_ADDG(f, nf, 1, 4);
-    f[3].a = 31; f[3].b = 32; f[3].c = 33;
-
-    printf("f=%08p nf=%d\n",f,nf);
-    hexdump((unsigned char *)f, nf*sizeof(*f));
-
-    ARRAY_EXTENDG(f, nf, 2, 4);
-
-    printf("f=%08p nf=%d\n",f,nf);
-    hexdump((unsigned char *)f, nf*sizeof(*f));
-
-    ARRAY_EXTENDG(f, nf, 4, 4);
-
-    printf("f=%08p nf=%d\n",f,nf);
-    hexdump((unsigned char *)f, nf*sizeof(*f));
-
-    ARRAY_ADDG(f, nf, 13, 4);
-
-    printf("f=%08p nf=%d\n",f,nf);
-    hexdump((unsigned char *)f, nf*sizeof(*f));
-
-    ARRAY_EXTENDG(f, nf, 3, 4);
-
-    printf("f=%08p nf=%d\n",f,nf);
-    hexdump((unsigned char *)f, nf*sizeof(*f));
-
-#endif
-
-#if 0
-    char *cstr = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    ARRAY(char,s,len);
-    ARRAY_ALLOCG(s,len,26,16);
-
-    memcpy(s,cstr,26);
-    printf("s=%08p len=%d >%s<\n",s,len,s);
-    hexdump(s, 32);
-
-    ARRAY_DELETE(s,len,3);
-    printf("s=%08p len=%d >%s<\n",s,len,s);
-    hexdump(s, 32);
-
-    ARRAY_DELETE_RANGE(s,len,13,5);
-    printf("s=%08p len=%d >%s<\n",s,len,s);
-    hexdump(s, 32);
-
-    ARRAY_DELETE(s,len,19);
-    printf("s=%08p len=%d >%s<\n",s,len,s);
-    hexdump(s, 32);
-
-    ARRAY_DELETE_RANGE(s,len,17,2);
-    printf("s=%08p len=%d >%s<\n",s,len,s);
-    hexdump(s, 32);
-
-#endif
 
 #if 0
 #define TEST_SORTF(a,b) { char A=a, B=b; printf("A=%d B=%d SORTF=%d\n",a,b,SORTF_SI(&A,&B,(void *)0x01000000)); }
@@ -438,8 +410,8 @@ void test_buffers() {
 
 #endif
 
-}
 
+#if 0
 typedef struct {
     int num;
     int * dongs;
@@ -470,6 +442,8 @@ void test_multiarrays() {
     TESTHERPS(h.herps);
     TESTHERPS(h.derps);
 }
+#endif
+
 
 void test_files() {
     off_t size;
@@ -569,50 +543,6 @@ void test_image_resize() {
     }
     ssize_t osize = export_png_file(img, "photo_resized.png");
     printf("Exported size : %zd\n",osize);
-}
-
-void test_stream() {
-
-#if 0
-    char *buf = "This is a test stream with some shit in it";
-    char *p = buf;
-
-    hexdump(buf, strlen(buf));
-
-#if 0
-    int8_t  a = parse_char(p);
-    int16_t b = parse_short(p);
-    int32_t c = parse_int(p);
-    int64_t d = parse_long(p);
-#else
-    int8_t  a = read_char_le(p);
-    int16_t b = read_short_le(p);
-    int32_t c = read_int_le(p);
-    int64_t d = read_long_le(p);
-#endif
-
-    printf("a=%d(%02x) b=%d(%04x) c=%d(%08x) d=%lld(%016llx) p=%08x buf=%08x\n",
-           a,a,b,b,c,c,d,d,(int)p,(int)buf);
-#endif
-
-    union {
-        double d;
-        float f;
-        uint8_t b[8];
-    } n;
-
-    n.f = 3.3;
-    hexdump(n.b, 8);
-    float f = parse_float(n.b);
-
-    n.d = 3.3;
-    hexdump(n.b, 8);
-    double d = parse_double(n.b);
-
-    char *s = "\xC0\xB1\x4B\x4F\x89\x69\x79\x9E";
-    double x = parse_double(s);
-    hexdump(s, 8);
-    printf("%f %f %f\n",f,d,x);
 }
 
 void test_wstream() {
@@ -790,41 +720,6 @@ void benchmark_allocation(int narrays, int gran) {
 #endif
 
     printf("Total: %d\n",n);
-}
-
-void test_swap() {
-    union {
-        uint8_t c[8];
-        uint16_t s;
-        uint32_t i;
-        uint64_t l;
-        float    f;
-        double   d;
-    } Z;
-    CLEAR(Z);
-
-    Z.s = 0x1234;
-    Z.s = swap_short(Z.s);
-    //hexdump(Z.c, sizeof(Z));
-    
-    Z.i = 0x12345678;
-    Z.i = swap_int(Z.i);
-    //hexdump(Z.c, sizeof(Z));
-    
-    Z.l = 0x123456789abcdef0LL;
-    Z.l = swap_long(Z.l);
-    //hexdump(Z.c, sizeof(Z));
-
-    CLEAR(Z);
-    Z.f = (float)M_PI;
-    //hexdump(Z.c, sizeof(Z));
-    Z.f = swap_float(Z.f);
-    //hexdump(Z.c, sizeof(Z));
-    
-    Z.d = M_PI;
-    //hexdump(Z.c, sizeof(Z));
-    Z.d = swap_double(Z.d);
-    //hexdump(Z.c, sizeof(Z));
 }
 
 #define TESTDNS(n) printf("%s => %08x\n",n,dns_addr_ipv4(n))
