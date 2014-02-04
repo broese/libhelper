@@ -9,11 +9,9 @@
 #include <string.h>
 #include <stdint.h>
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * @name GenericMacros
- * Generic macros.
+ * @name Generic Macros
  */
 
 //TODO: move generic macros into a separate module lh_generic.h
@@ -23,24 +21,23 @@
  * \param align Alignment size
  * \return Aligned number
  */
-#define lh_align(num,align)                            \
-    ((((num)-1)|(((__typeof__(num))align)-1)) + 1)
+#define lh_align(num,align) ((((num)-1)|(((__typeof__(num))align)-1)) + 1)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * @name ClearingMacros
+ * @name Clearing Macros
  * Macros for zeroing memory
  */
 
 /*! \brief Clear a single object (non-pointer)
  * \param obj Name of the object
  */
-#define lh_clear_obj(obj) lh_clear_ptr(&(obj))
+#define lh_clear_obj(obj)               lh_clear_ptr(&(obj))
 
 /*! \brief Clear a single object by pointer
  * \param ptr Pointer
  */
-#define lh_clear_ptr(ptr) lh_clear_num(ptr,1)
+#define lh_clear_ptr(ptr)               lh_clear_num(ptr,1)
 
 /*! \brief Clear an array of objects
  * \param ptr Array name or a pointer
@@ -53,12 +50,12 @@
  * \param from Index of the first element to be cleared
  * \param num Number of elements to clear
  */
-#define lh_clear_range(ptr, from, num) lh_clear_num(ptr+from, num)
+#define lh_clear_range(ptr, from, num)  lh_clear_num(ptr+from, num)
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * @name AllocMacros
- * Macros for allocating objects, arrays and buffers
+ * @name Allocation Macros
+ * Allocation objects, arrays and buffers
  */
 
 //NOTE: all allocation macros will clear the resulting array buffer or object
@@ -69,32 +66,32 @@
  * \param type Type of object
  * \param name Name of the new variable that will be assigned the pointer
  */
-#define lh_create_obj(type,name) lh_create_num(type,name,1)
+#define lh_create_obj(type,name)        lh_create_num(type,name,1)
 
 /*! \brief Allocate a byte buffer.
  * \param name Name of the new variable that will be assigned the pointer
  * \param size Size of the buffer, in bytes
  */
-#define lh_create_buf(name,size) lh_create_num(uint8_t,name,size)
+#define lh_create_buf(name,size)        lh_create_num(uint8_t,name,size)
 
 /*! \brief Allocate an array of elements
  * \param type Type of objects in the array
  * \param name Name of the new variable that will be assigned the pointer
  * \param num Number of elements in the allocated array
  */
-#define lh_create_num(type,name,num) type * lh_alloc_num(name,num)
+#define lh_create_num(type,name,num)    type * lh_alloc_num(name,num)
 
 // lh_alloc_* : Allocate and put pointer to a variable
 
 /*! \brief Allocate single object to an existing variable
  * \param ptr Pointer varable for the object
  */
-#define lh_alloc_obj(ptr) lh_alloc_num(ptr,1)
+#define lh_alloc_obj(ptr)               lh_alloc_num(ptr,1)
 
 /*! \brief Allocate a byte buffer to an existing variable
  * \param ptr Pointer varable for the object
  */
-#define lh_alloc_buf(ptr,size) lh_alloc_num(ptr,size)
+#define lh_alloc_buf(ptr,size)          lh_alloc_num(ptr,size)
 
 /*! \brief Allocate an array of elements to an existing variable
  * \param ptr Pointer varable for the object
@@ -106,7 +103,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * @name AllocMacros
+ * @name Resizable Arrays
  * Macros for handling expandable arrays and buffers.
  * The expandable arrays are defined via variable 'ptr' holding the pointer
  * to data and 'cnt' - an integer variable holding the count of elements.
@@ -123,8 +120,7 @@
  * \param ptr Pointer to allocated memory
  * \param num New number of elements to be available after allocation
  */
-#define lh_resize(ptr, num)                     \
-    ptr = realloc(ptr, num*sizeof(*ptr));       \
+#define lh_resize(ptr, num) ptr = realloc(ptr, num*sizeof(*ptr));
 
 /*! \brief Declare an expandable array. Variables are initialized but
  * no memory is llocated
@@ -132,15 +128,13 @@
  * \param ptr Name of the pointer variable
  * \param cnt Name of the counter variable
  */
-#define lh_array(type,ptr,cnt)                  \
-    type * ptr=NULL; ssize_t cnt=0;
+#define lh_array(type,ptr,cnt) type * ptr=NULL; ssize_t cnt=0;
 
 /*! \brief Declare and expandable buffer (elements are of type uint8_t).
  * \param ptr Name of the pointer variable
  * \param cnt Name of the counter variable
  */
-#define lh_buffer(ptr,cnt)                      \
-    lh_array(uint8_t,ptr,cnt)
+#define lh_buffer(ptr,cnt)              lh_array(uint8_t,ptr,cnt)
 
 /*! \brief Allocate memory for a given number of elements in an expandable array
  * \param ptr Name of the pointer variable
@@ -178,13 +172,14 @@
     lh_array_resize_g(ptr,cnt,((cnt)+(num)),gran)
 
 /*! \brief Allocate array (non-granular version) */
-#define lh_array_allocate(ptr,cnt,num)   lh_array_allocate_g(ptr,cnt,num,1)
+#define lh_array_allocate(ptr,cnt,num)  lh_array_allocate_g(ptr,cnt,num,1)
 
 /*! \brief Resize array (non-granular version) */
-#define lh_array_resize(ptr,cnt,num)     lh_array_resize_g(ptr,cnt,num,1)
+#define lh_array_resize(ptr,cnt,num)    lh_array_resize_g(ptr,cnt,num,1)
 
 /*! \brief Add elements to array (non-granular version) */
-#define lh_array_add(ptr,cnt,num)        lh_array_add_g(ptr,cnt,num,1)
+#define lh_array_add(ptr,cnt,num)       lh_array_add_g(ptr,cnt,num,1)
+
 
 /*! \brief Delete a number of elements starting from a given position
  * Elements past the deleted range are moved to close the gap
@@ -201,7 +196,7 @@
         lh_clear_range(ptr,(cnt)-(num),num);                            \
     }                                                                   
 
-/*! \brief Delete a single element at given position
+/*! \brief Delete a single element at given position, but do not resize the array
  * \param ptr Name of the pointer variable
  * \param cnt Name of the counter variable
  * \param idx Index of the element to delete
@@ -225,7 +220,7 @@
  * \param cnt Name of the counter variable
  * \param idx Index of the element to delete
  */
-#define lh_array_delete_element(ptr, cnt, idx) \
+#define lh_array_delete_element(ptr, cnt, idx)  \
     lh_array_delete_range(ptr, cnt, idx, 1)
 
 ////////////////////////////////////////////////////////////////////////////////

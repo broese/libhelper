@@ -225,10 +225,12 @@ int test_arrays() {
     lh_array_delete_element(buf,buflen,700);
     lh_array_delete_element(buf,buflen,500);
     lh_array_delete_element(buf,buflen,300);
-    TEST_ARRAY("lh_array_delete_element",buf,buflen,s-(700%256)-(500%256)-(300%256));
+    TEST_ARRAY("lh_array_delete_element",
+               buf,buflen,s-(700%256)-(500%256)-(300%256));
 
     lh_array_delete_range(buf,buflen,100,5);
-    TEST_ARRAY("lh_array_delete_element",buf,buflen,s-100-101-102-103-104-(700%256)-(500%256)-(300%256));
+    TEST_ARRAY("lh_array_delete_element",
+               buf,buflen,s-100-101-102-103-104-(700%256)-(500%256)-(300%256));
     
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -368,7 +370,52 @@ int test_stream() {
     return fail;
 }
 
+#define TEST_WSTREAM(func, buf1, buf2, len) {        \
+        int f=0;                                     \
+        f = (memcmp(buf1, buf2, len) != 0);          \
+        fail += f;                                   \
+        printf("%s: %s\n", #func, PASSFAIL(!f));     \
+    }
 
+int test_wstream() {
+    printf("\n\n====== Testing bytestream writing ======\n");
+    int fail = 0, f;
+
+    char buf[512];
+    CLEAR(buf);
+    uint8_t *ptr;
+
+    ptr = buf;
+    lh_write_char_be(ptr,0x12);
+    lh_write_short_be(ptr,0x3456);
+    lh_write_short_le(ptr,0x789A);
+    lh_write_int_be(ptr,0xABCDEF01);
+    lh_write_int_le(ptr,0xABCDEF01);
+    lh_write_long_be(ptr,0xfedcba9876543210LL);
+    lh_write_long_le(ptr,0xfedcba9876543210LL);
+    lh_write_float_be(ptr,(float)M_PI);
+    lh_write_double_be(ptr,M_PI);
+    lh_write_float_le(ptr,(float)M_E);
+    lh_write_double_le(ptr,M_E);
+
+    char *check =
+        "\x12"
+        "\x34\x56" "\x9a\x78"
+        "\xab\xcd\xef\x01" "\x01\xef\xcd\xab"
+        "\xfe\xdc\xba\x98\x76\x54\x32\x10"
+        "\x10\x32\x54\x76\x98\xba\xdc\xfe"
+        "\x40\x49\x0f\xdb"
+        "\x40\x09\x21\xfb\x54\x44\x2d\x18"
+        "\x54\xf8\x2d\x40"
+        "\x69\x57\x14\x8b\x0a\xbf\x05\x40"
+        ;
+
+    TEST_WSTREAM(lh_write,buf,check,53);
+    //hexdump(buf,64);
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
 
 
 
@@ -747,15 +794,18 @@ int main(int ac, char **av) {
 #endif
 #endif
 
+    int fail = 0;
+
     //// lh_buffers.h
-    test_align();
-    test_clear();
-    test_alloc();
-    test_arrays();
+    fail += test_align();
+    fail += test_clear();
+    fail += test_alloc();
+    fail += test_arrays();
 
     //// lh_bytes.h
-    test_bswap();
-    test_stream();
+    fail += test_bswap();
+    fail += test_stream();
+    fail += test_wstream();
 
 
 
@@ -765,7 +815,6 @@ int main(int ac, char **av) {
     //test_compression();
     //test_image2();
     //test_image_resize();
-    //test_wstream();
 
     //test_server();
     //test_event();
@@ -774,6 +823,8 @@ int main(int ac, char **av) {
 
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));
+
+    printf("========== TOTAL: %s ==========\n", PASSFAIL(!fail));
 
 #ifdef HAVE_MTRACE
 #if DEBUG_MEMORY

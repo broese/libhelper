@@ -6,8 +6,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /**
- * @name ByteSwappingMacros
- * Byte swapping macros
+ * @name Byte Swapping Macros
+ * Macros for swapping byteorder in elemental types.
  */
 
 /*! \brief Byte-swap a 16-bit value
@@ -95,10 +95,11 @@ static inline double lh_bswap_double(double v) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @name ParseBytestream
+ * @name Parse Bytestream
  * Functions for parsing values from a bytestream
  */
 
+// \cond INTERNAL
 #define GETF *t++ = *p++
 #define GETR *t-- = *p++
 
@@ -116,7 +117,8 @@ static inline double lh_bswap_double(double v) {
 // Note: we are using a "statement expression" ( { } ) to turn
 // a block into an expression. This is a GCC-specific extension,
 // not standard C
-//FIXME: introduce a C-standard variant of this macro, distinguish with #ifdef __GNU_C
+//FIXME: introduce a C-standard variant of this macro,
+//distinguish with #ifdef __GNU_C
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN     
 
@@ -160,10 +162,12 @@ static inline double lh_bswap_double(double v) {
         GETRM(size);                            \
         temp.value; } )
 
-#endif                                  
+#endif           
+
+// \endcond                       
 
 #define lh_parse_char_be(ptr)   *ptr
-#define lh_parse_char_le(ptr)   *ptr
+#define lh_parse_char_le(ptr)   lh_parse_char_be(ptr)
 #define lh_parse_short_be(ptr)  lh_parse_be(ptr,uint16_t,2)
 #define lh_parse_short_le(ptr)  lh_parse_le(ptr,uint16_t,2)
 #define lh_parse_int_be(ptr)    lh_parse_be(ptr,uint32_t,4)
@@ -178,13 +182,16 @@ static inline double lh_bswap_double(double v) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @name ReadByteStream
+ * @name Read Bytestream
  * Macros that parse the byte stream for data and then advance the reading pointer
  */
+
+// \cond
 #define lh_read_be(ptr,type,size)                                       \
     ( { type temp = lh_parse_be(ptr,type,size); ptr+=size; temp; } )
 #define lh_read_le(ptr,type,size)                                       \
     ( { type temp = lh_parse_le(ptr,type,size); ptr+=size; temp; } )
+// \endcond
 
 #define lh_read_char_be(ptr)    *ptr++
 #define lh_read_char_le(ptr)    lh_read_char_be(ptr)
@@ -202,15 +209,18 @@ static inline double lh_bswap_double(double v) {
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @name ReadLimitByteStream
+ * @name Read Limit Bytestream
  * Macros for reading the byte stream with limit checking
  */
+
+// \cond
 #define lh_lread_be(ptr,lim,type,var,size,fail) \
     if (lim-ptr < size) { fail; }               \
     type var = lh_read_be(ptr,type,size);
 #define lh_lread_le(ptr,lim,type,var,size,fail) \
     if (lim-ptr < size) { fail; }               \
     type var = lh_read_le(ptr,type,size);
+// \endcond
 
 #define lh_lread_char_be(ptr,lim,var,fail)      \
     if (lim==ptr) { fail; }                     \
@@ -228,302 +238,116 @@ static inline double lh_bswap_double(double v) {
 #define lh_lread_double_be(ptr,lim,var,fail)  lh_lread_be(ptr,lim,double,var,8,fail)
 #define lh_lread_double_le(ptr,lim,var,fail)  lh_lread_le(ptr,lim,double,var,8,fail)
 
-
-
-
-
-
-#if 0
-
-
-#define read_char(p)  parse_char(p);  (p)++
-#define read_short(p) parse_short(p); (p)+=2
-#define read_int(p)   parse_int(p);   (p)+=4
-#define read_long(p)  parse_long(p);  (p)+=8
-
-// Little-Endian extraction (aka Intel order)
-
-static inline int16_t parse_short_le(const char *p) {
-    union {
-        char buf[2];
-        int16_t val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-#else
-    unsigned char *t = &temp.buf[1];
-    GETR; GETR;
-#endif
-    return temp.val;
-}
-
-static inline int32_t parse_int_le(const char *p) {
-    union {
-        char buf[4];
-        int32_t val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-#else
-    unsigned char *t = &temp.buf[3];
-    GETR; GETR;
-    GETR; GETR;
-#endif
-    return temp.val;
-}
-
-static inline int64_t parse_long_le(const char *p) {
-    union {
-        char buf[8];
-        int64_t val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-#else
-    unsigned char *t = &temp.buf[7];
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-#endif
-    return temp.val;
-}
-
-#define read_char_le(p)  parse_char(p);     (p)++
-#define read_short_le(p) parse_short_le(p); (p)+=2
-#define read_int_le(p)   parse_int_le(p);   (p)+=4
-#define read_long_le(p)  parse_long_le(p);  (p)+=8
-
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline float parse_float(const char *p) {
-    union {
-        char buf[4];
-        float val;
-    } temp;
+/**
+ * @name Place to Byte Stream
+ * Write elemental data types to a byte stream
+ */
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[3];
-    GETR; GETR;
-    GETR; GETR;
-#else
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-#endif
-    return temp.val;
-}
-
-static inline double parse_double(const char *p) {
-    union {
-        char buf[8];
-        double val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[7];
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-#else
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-#endif
-    return temp.val;
-}
-
-#define read_float(p)   parse_float(p);   p+=4
-#define read_double(p)  parse_double(p);  p+=8
-
-////////////////////////////////////////////////////////////////////////////////
-
-static inline float parse_float_le(const char *p) {
-    union {
-        char buf[4];
-        float val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-#else
-    unsigned char *t = &temp.buf[3];
-    GETR; GETR;
-    GETR; GETR;
-#endif
-    return temp.val;
-}
-
-static inline double parse_double_le(const char *p) {
-    union {
-        char buf[8];
-        double val;
-    } temp;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned char *t = &temp.buf[0];
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-    GETF; GETF;
-#else
-    unsigned char *t = &temp.buf[7];
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-    GETR; GETR;
-#endif
-    return temp.val;
-}
-
-#define read_float_le(p)   parse_float_le(p);   p+=4
-#define read_double_le(p)  parse_double_le(p);  p+=8
-
-////////////////////////////////////////////////////////////////////////////////
-// Writing to a stream
-
+// \cond INTERNAL
 #define PUTF *p++ = *t++
 #define PUTR *p++ = *t--
 
-static inline char * place_char(char *p, int8_t v) {
-    *p++ = v;
-    return p;
-}
+#define PUTF1 PUTF
+#define PUTR1 PUTR
+#define PUTF2 PUTF;PUTF
+#define PUTR2 PUTR;PUTR
+#define PUTF4 PUTF2;PUTF2
+#define PUTR4 PUTR2;PUTR2
+#define PUTF8 PUTF4;PUTF4
+#define PUTR8 PUTR4;PUTR4
+#define PUTFM(n) PUTF ## n
+#define PUTRM(n) PUTR ## n
 
-static inline char * place_short(char *p, int16_t v) {
-    union {
-        int8_t  buf[2];
-        int16_t val;
-    } temp;
+// Note: we are using a "statement expression" ( { } ) to turn
+// a block into an expression. This is a GCC-specific extension,
+// not standard C
+//FIXME: introduce a C-standard variant of this macro,
+//distinguish with #ifdef __GNU_C
 
-    temp.val = v;
+#if __BYTE_ORDER == __LITTLE_ENDIAN     
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    int8_t *t = &temp.buf[1];
-    PUTR; PUTR;
+#define lh_place_be(ptr,type,size,val) ( {      \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        temp.value = val;                       \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[size-1];       \
+        PUTRM(size);                            \
+        p; } )
+#define lh_place_le(ptr,type,size,val) ( {      \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        temp.value = val;                       \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[0];            \
+        PUTFM(size);                            \
+        p; } )
+
 #else
-    int8_t *t = &temp.buf[0];
-    PUTF; PUTF;
-#endif
 
-    return p;
-}
+#define lh_place_be(ptr,type,size,val) ( {      \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        temp.value = val;                       \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[0];            \
+        PUTFM(size);                            \
+        p; } )
+#define lh_place_le(ptr,type,size,val) ( {      \
+        union {                                 \
+            uint8_t bytes[size];                \
+            type    value;                      \
+        } temp;                                 \
+        temp.value = val;                       \
+        uint8_t *p = (uint8_t *)ptr;            \
+        uint8_t *t = &temp.bytes[size-1];       \
+        PUTRM(size);                            \
+        p; } )
 
-static inline char * place_int(char *p, int32_t v) {
-    union {
-        int8_t  buf[4];
-        int32_t val;
-    } temp;
+#endif           
 
-    temp.val = v;
+// \endcond
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    int8_t *t = &temp.buf[3];
-    PUTR; PUTR;
-    PUTR; PUTR;
-#else
-    int8_t *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-#endif
-
-    return p;
-}
-
-static inline char * place_long(char *p, int64_t v) {
-    union {
-        int8_t  buf[8];
-        int64_t val;
-    } temp;
-
-    temp.val = v;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    int8_t *t = &temp.buf[7];
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-#else
-    int8_t *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-#endif
-
-    return p;
-}
-
-#define write_char(p,v)  p=place_char(p,v)
-#define write_short(p,v) p=place_short(p,v)
-#define write_int(p,v)   p=place_int(p,v)
-#define write_long(p,v)  p=place_long(p,v)
+#define lh_place_char_be(ptr,val)               \
+    ( { uint8_t *p = (uint8_t *)ptr; *p++=val; p; } )
+#define lh_place_char_le(ptr,val)       lh_place_char_be(ptr,val)
+#define lh_place_short_be(ptr,val)      lh_place_be(ptr,uint16_t,2,val)
+#define lh_place_short_le(ptr,val)      lh_place_le(ptr,uint16_t,2,val)
+#define lh_place_int_be(ptr,val)        lh_place_be(ptr,uint32_t,4,val)
+#define lh_place_int_le(ptr,val)        lh_place_le(ptr,uint32_t,4,val)
+#define lh_place_long_be(ptr,val)       lh_place_be(ptr,uint64_t,8,val)
+#define lh_place_long_le(ptr,val)       lh_place_le(ptr,uint64_t,8,val)
+#define lh_place_float_be(ptr,val)      lh_place_be(ptr,float,4,val)
+#define lh_place_float_le(ptr,val)      lh_place_le(ptr,float,4,val)
+#define lh_place_double_be(ptr,val)     lh_place_be(ptr,double,8,val)
+#define lh_place_double_le(ptr,val)     lh_place_le(ptr,double,8,val)
 
 
-static inline uint8_t * place_float(char *p, float v) {
-    union {
-        uint8_t buf[4];
-        float val;
-    } temp;
+/**
+ * @name Write Byte Stream
+ * Write elemental types to a bytestream and advance the write pointer
+ */
 
-    temp.val = v;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint8_t *t = &temp.buf[3];
-    PUTR; PUTR;
-    PUTR; PUTR;
-#else
-    uint8_t *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-#endif
-    return p;
-}
-
-static inline uint8_t * place_double(char *p, double v) {
-    union {
-        uint8_t buf[8];
-        double val;
-    } temp;
-
-    temp.val = v;
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint8_t *t = &temp.buf[7];
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-    PUTR; PUTR;
-#else
-    uint8_t *t = &temp.buf[0];
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-    PUTF; PUTF;
-#endif
-    return p;
-}
-
-#define write_float(p,v)   place_float(p,v);   p+=4
-#define write_double(p,v)  place_double(p,v);  p+=8
-
-#endif
+#define lh_write_char_be(ptr,val)       ptr=lh_place_char_be(ptr,val)
+#define lh_write_char_le(ptr,val)       ptr=lh_place_char_le(ptr,val)
+#define lh_write_short_be(ptr,val)      ptr=lh_place_short_be(ptr,val)
+#define lh_write_short_le(ptr,val)      ptr=lh_place_short_le(ptr,val)
+#define lh_write_int_be(ptr,val)        ptr=lh_place_int_be(ptr,val)
+#define lh_write_int_le(ptr,val)        ptr=lh_place_int_le(ptr,val)
+#define lh_write_long_be(ptr,val)       ptr=lh_place_long_be(ptr,val)
+#define lh_write_long_le(ptr,val)       ptr=lh_place_long_le(ptr,val)
+#define lh_write_float_be(ptr,val)      ptr=lh_place_float_be(ptr,val)
+#define lh_write_float_le(ptr,val)      ptr=lh_place_float_le(ptr,val)
+#define lh_write_double_be(ptr,val)     ptr=lh_place_double_be(ptr,val)
+#define lh_write_double_le(ptr,val)     ptr=lh_place_double_le(ptr,val)
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -534,5 +358,63 @@ static inline uint8_t * place_double(char *p, double v) {
 #define bswap_long(v)                   lh_bswap_long(v)
 #define bswap_float(v)                  lh_bswap_float(v)
 #define bswap_double(v)                 lh_bswap_double(v)
+
+#define ibswap_short(v)                 lh_ibswap_short(v)
+#define ibswap_int(v)                   lh_ibswap_int(v)
+#define ibswap_long(v)                  lh_ibswap_long(v)
+#define ibswap_float(v)                 lh_ibswap_float(v)
+#define ibswap_double(v)                lh_ibswap_double(v)
+
+#define parse_char(ptr)                 lh_parse_char_be(ptr)
+#define parse_char_le(ptr)              lh_parse_char_le(ptr)
+#define parse_short(ptr)                lh_parse_short_be(ptr)
+#define parse_short_le(ptr)             lh_parse_short_le(ptr)
+#define parse_int(ptr)                  lh_parse_int_be(ptr)
+#define parse_int_le(ptr)               lh_parse_int_le(ptr)
+#define parse_long(ptr)                 lh_parse_long_be(ptr)
+#define parse_long_le(ptr)              lh_parse_long_le(ptr)
+#define parse_float(ptr)                lh_parse_float_be(ptr)
+#define parse_float_le(ptr)             lh_parse_float_le(ptr)
+#define parse_double(ptr)               lh_parse_double_be(ptr)
+#define parse_double_le(ptr)            lh_parse_double_le(ptr)
+
+#define lread_char(ptr,lim,var,fail)        lh_lread_char_be(ptr,lim,var,fail)
+#define lread_char_le(ptr,lim,var,fail)     lh_lread_char_le(ptr,lim,var,fail)
+#define lread_short(ptr,lim,var,fail)       lh_lread_short_be(ptr,lim,var,fail)
+#define lread_short_le(ptr,lim,var,fail)    lh_lread_short_le(ptr,lim,var,fail)
+#define lread_int(ptr,lim,var,fail)         lh_lread_int_be(ptr,lim,var,fail)
+#define lread_int_le(ptr,lim,var,fail)      lh_lread_int_le(ptr,lim,var,fail)
+#define lread_long(ptr,lim,var,fail)        lh_lread_long_be(ptr,lim,var,fail)
+#define lread_long_le(ptr,lim,var,fail)     lh_lread_long_le(ptr,lim,var,fail)
+#define lread_float(ptr,lim,var,fail)       lh_lread_float_be(ptr,lim,var,fail)
+#define lread_float_le(ptr,lim,var,fail)    lh_lread_float_le(ptr,lim,var,fail)
+#define lread_double(ptr,lim,var,fail)      lh_lread_double_be(ptr,lim,var,fail)
+#define lread_double_le(ptr,lim,var,fail)   lh_lread_double_le(ptr,lim,var,fail)
+
+#define place_char(ptr,val)             lh_place_char_be(ptr,val)
+#define place_char_le(ptr,val)          lh_place_char_le(ptr,val)
+#define place_short(ptr,val)            lh_place_short_be(ptr,val)
+#define place_short_le(ptr,val)         lh_place_short_le(ptr,val)
+#define place_int(ptr,val)              lh_place_int_be(ptr,val)
+#define place_int_le(ptr,val)           lh_place_int_le(ptr,val)
+#define place_long(ptr,val)             lh_place_long_be(ptr,val)
+#define place_long_le(ptr,val)          lh_place_long_le(ptr,val)
+#define place_float(ptr,val)            lh_place_float_be(ptr,val)
+#define place_float_le(ptr,val)         lh_place_float_le(ptr,val)
+#define place_double(ptr,val)           lh_place_double_be(ptr,val)
+#define place_double_le(ptr,val)        lh_place_double_le(ptr,val)
+
+#define write_char(ptr,val)             lh_write_char_be(ptr,val)
+#define write_char_le(ptr,val)          lh_write_char_le(ptr,val)
+#define write_short(ptr,val)            lh_write_short_be(ptr,val)
+#define write_short_le(ptr,val)         lh_write_short_le(ptr,val)
+#define write_int(ptr,val)              lh_write_int_be(ptr,val)
+#define write_int_le(ptr,val)           lh_write_int_le(ptr,val)
+#define write_long(ptr,val)             lh_write_long_be(ptr,val)
+#define write_long_le(ptr,val)          lh_write_long_le(ptr,val)
+#define write_float(ptr,val)            lh_write_float_be(ptr,val)
+#define write_float_le(ptr,val)         lh_write_float_le(ptr,val)
+#define write_double(ptr,val)           lh_write_double_be(ptr,val)
+#define write_double_le(ptr,val)        lh_write_double_le(ptr,val)
 
 #endif
