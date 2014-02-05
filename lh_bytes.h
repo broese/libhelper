@@ -99,7 +99,8 @@ static inline double lh_bswap_double(double v) {
  * Functions for parsing values from a bytestream
  */
 
-// \cond INTERNAL
+/// \cond
+
 #define GETF *t++ = *p++
 #define GETR *t-- = *p++
 
@@ -164,7 +165,7 @@ static inline double lh_bswap_double(double v) {
 
 #endif           
 
-// \endcond                       
+/// \endcond
 
 #define lh_parse_char_be(ptr)   *ptr
 #define lh_parse_char_le(ptr)   lh_parse_char_be(ptr)
@@ -186,12 +187,12 @@ static inline double lh_bswap_double(double v) {
  * Macros that parse the byte stream for data and then advance the reading pointer
  */
 
-// \cond
+/// \cond
 #define lh_read_be(ptr,type,size)                                       \
     ( { type temp = lh_parse_be(ptr,type,size); ptr+=size; temp; } )
 #define lh_read_le(ptr,type,size)                                       \
     ( { type temp = lh_parse_le(ptr,type,size); ptr+=size; temp; } )
-// \endcond
+/// \endcond
 
 #define lh_read_char_be(ptr)    *ptr++
 #define lh_read_char_le(ptr)    lh_read_char_be(ptr)
@@ -213,14 +214,14 @@ static inline double lh_bswap_double(double v) {
  * Macros for reading the byte stream with limit checking
  */
 
-// \cond
+/// \cond
 #define lh_lread_be(ptr,lim,type,var,size,fail) \
     if (lim-ptr < size) { fail; }               \
     type var = lh_read_be(ptr,type,size);
 #define lh_lread_le(ptr,lim,type,var,size,fail) \
     if (lim-ptr < size) { fail; }               \
     type var = lh_read_le(ptr,type,size);
-// \endcond
+/// \endcond
 
 #define lh_lread_char_be(ptr,lim,var,fail)      \
     if (lim==ptr) { fail; }                     \
@@ -245,7 +246,7 @@ static inline double lh_bswap_double(double v) {
  * Write elemental data types to a byte stream
  */
 
-// \cond INTERNAL
+/// \cond INTERNAL
 #define PUTF *p++ = *t++
 #define PUTR *p++ = *t--
 
@@ -314,7 +315,7 @@ static inline double lh_bswap_double(double v) {
 
 #endif           
 
-// \endcond
+/// \endcond
 
 #define lh_place_char_be(ptr,val)               \
     ( { uint8_t *p = (uint8_t *)ptr; *p++=val; p; } )

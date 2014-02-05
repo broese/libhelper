@@ -10,11 +10,7 @@
 #include <stdint.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/**
- * @name Generic Macros
- */
-
-//TODO: move generic macros into a separate module lh_generic.h
+/// @name Generic Macros
 
 /*! \brief Align a number to the nearest boundary
  * \param num Number of elements
@@ -24,10 +20,7 @@
 #define lh_align(num,align) ((((num)-1)|(((__typeof__(num))align)-1)) + 1)
 
 ////////////////////////////////////////////////////////////////////////////////
-/**
- * @name Clearing Macros
- * Macros for zeroing memory
- */
+/// @name Macros for zeroing memory
 
 /*! \brief Clear a single object (non-pointer)
  * \param obj Name of the object
@@ -53,14 +46,13 @@
 #define lh_clear_range(ptr, from, num)  lh_clear_num(ptr+from, num)
 
 ////////////////////////////////////////////////////////////////////////////////
-/**
- * @name Allocation Macros
- * Allocation objects, arrays and buffers
+/** @name Allocation of objects, arrays and buffers
+ * NOTE: all allocation macros will clear the resulting array buffer or object
+ *
+ * lh_create_* : Allocate and place in a new pointer variable
+ *
+ * lh_alloc_* : Allocate and put pointer to a variable
  */
-
-//NOTE: all allocation macros will clear the resulting array buffer or object
-
-// lh_create_* : Allocate and place in a new pointer variable
 
 /*! \brief Allocate a single object to a new variable
  * \param type Type of object
@@ -80,8 +72,6 @@
  * \param num Number of elements in the allocated array
  */
 #define lh_create_num(type,name,num)    type * lh_alloc_num(name,num)
-
-// lh_alloc_* : Allocate and put pointer to a variable
 
 /*! \brief Allocate single object to an existing variable
  * \param ptr Pointer varable for the object
