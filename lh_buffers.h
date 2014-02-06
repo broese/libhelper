@@ -152,6 +152,17 @@
         cnt=num;                                                        \
     }
 
+/*! \brief Ensure that the array allocation matches specific granularity
+ * The array is resized if necessary and the remaining elements zeroed
+ * \param ptr Name of the pointer variable
+ * \param cnt Name of the counter variable
+ * \param gran Granularity of allocation, must be power of 2
+ */
+#define lh_array_setgran(ptr, cnt, gran) {                              \
+        lh_resize((ptr),lh_align((cnt),(gran)));                        \
+        lh_clear_range((ptr), (cnt), (lh_align((cnt),gran))-(cnt));     \
+    }
+
 /*! \brief Resize an expandable array by adding a number of elements
  * \param ptr Name of the pointer variable
  * \param cnt Name of the counter variable
