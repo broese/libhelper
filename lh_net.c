@@ -1,5 +1,7 @@
 // on Solaris, requires -lsocket -lnsl
 
+#define LH_DECLARE_SHORT_NAMES
+
 #include "lh_buffers.h"
 #include "lh_debug.h"
 #include "lh_files.h"
@@ -13,30 +15,34 @@ static inline int sock_bind_ipv4(int s, uint32_t ip, uint16_t port) {
     };
     
     if (bind(s, (struct sockaddr *)&sa, sizeof(sa)) != 0)
-        LH_ERROR(-1, "sock_bind_ipv4: bind failed");
+        LH_ERROR(-1, "%s: bind failed", __func__);
     
     return 0;
 }
 
 // generic function to create listening TCP sockets for IPv4
-int sock_server_ipv4_tcp(uint32_t ip, uint16_t port) {
+int lh_sock_server_ipv4_tcp(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (s < 0) LH_ERROR(-1, "sock_server_ipv4_tcp: failed to create socket PF_INET/SOCK_STREAM/IPPROTO_TCP");
+    if (s < 0)
+        LH_ERROR(-1, "%s: failed to create socket", __func__);
 
     int v = 1;
     setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(v));
 
-    if (sock_bind_ipv4(s,ip,port)) return -1;
+    if (sock_bind_ipv4(s,ip,port))
+        return -1;
 
-    if (listen(s, LH_NET_DEFAULT_BACKLOG)) LH_ERROR(-1, "sock_server_ipv4_tcp: listen failed");
+    if (listen(s, LH_NET_DEFAULT_BACKLOG))
+        LH_ERROR(-1, "%s: listen failed", __func__);
 
     return s;
 }
 
 // generic function to create bound UDP sockets for IPv4
-int sock_server_ipv4_udp(uint32_t ip, uint16_t port) {
+int lh_sock_server_ipv4_udp(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (s < 0) LH_ERROR(-1, "sock_server_ipv4_udp: failed to create socket PF_INET/SOCK_STREAM/IPPROTO_UDP");
+    if (s < 0)
+        LH_ERROR(-1, "%s: failed to create socket", __func__);
 
     if (sock_bind_ipv4(s,ip,port)) return -1;
 
@@ -46,9 +52,10 @@ int sock_server_ipv4_udp(uint32_t ip, uint16_t port) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // make a TCP connection to a remote machine
-int sock_client_ipv4_tcp(uint32_t ip, uint16_t port) {
+int lh_sock_client_ipv4_tcp(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (s < 0) LH_ERROR(-1, "%s: failed to create socket PF_INET/SOCK_STREAM/IPPROTO_TCP",__func__);
+    if (s < 0)
+        LH_ERROR(-1, "%s: failed to create socket", __func__);
 
     struct sockaddr_in sa = {
         .sin_family = AF_INET,
@@ -66,7 +73,7 @@ int sock_client_ipv4_tcp(uint32_t ip, uint16_t port) {
 ////////////////////////////////////////////////////////////////////////////////
 
 //FIXME: come up with a better idea to return an error
-uint32_t dns_addr_ipv4(const char *hostname) {
+uint32_t lh_dns_addr_ipv4(const char *hostname) {
     struct addrinfo hints;
     CLEAR(hints);
     hints.ai_family = AF_INET;
