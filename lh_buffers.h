@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @name Generic Macros
@@ -79,12 +80,14 @@
 #define lh_alloc_obj(ptr)               lh_alloc_num(ptr,1)
 
 /*! \brief Allocate a byte buffer to an existing variable
- * \param ptr Pointer varable for the object
+ * \param ptr Pointer varable for the buffer
+ * \param size Size of the buffer, in bytes
  */
 #define lh_alloc_buf(ptr,size)          lh_alloc_num(ptr,size)
 
 /*! \brief Allocate an array of elements to an existing variable
- * \param ptr Pointer varable for the object
+ * \param ptr Pointer varable for the array
+ * \param num Number of elements in the allocated array
  */
 #define lh_alloc_num(ptr,num)                   \
     ptr = malloc((num)*sizeof(*(ptr)));         \
@@ -152,6 +155,15 @@
         cnt=num;                                                        \
     }
 
+/*! \brief Resize an expandable array by adding a number of elements
+ * \param ptr Name of the pointer variable
+ * \param cnt Name of the counter variable
+ * \param num Number of elements to be added
+ * \param gran Granularity of allocation, must be power of 2
+ */
+#define lh_array_add_g(ptr,cnt,num,gran)            \
+    lh_array_resize_g(ptr,cnt,((cnt)+(num)),gran)
+
 /*! \brief Ensure that the array allocation matches specific granularity
  * The array is resized if necessary and the remaining elements zeroed
  * \param ptr Name of the pointer variable
@@ -162,15 +174,6 @@
         lh_resize((ptr),lh_align((cnt),(gran)));                        \
         lh_clear_range((ptr), (cnt), (lh_align((cnt),gran))-(cnt));     \
     }
-
-/*! \brief Resize an expandable array by adding a number of elements
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param num Number of elements to be added
- * \param gran Granularity of allocation, must be power of 2
- */
-#define lh_array_add_g(ptr,cnt,num,gran)            \
-    lh_array_resize_g(ptr,cnt,((cnt)+(num)),gran)
 
 /*! \brief Allocate array (non-granular version) */
 #define lh_array_allocate(ptr,cnt,num)  lh_array_allocate_g(ptr,cnt,num,1)
@@ -226,39 +229,161 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * @name Resizable Multi-Arrays
+ * Resizable multi-arrays are similar to the normal resizable arrays, but here,
+ * a single count variable defines size of multiple arrays, referenced by their
+ * respective pointer variables.
+ * The list of pointer variables is a variable argument list. Handling of this
+ * list has certain limitations in the preprocessor. Instead of creating a set
+ * of complex, limited and potentially incompatible macros, I went for a
+ * compromise. Each element of the list should be enclosed with the macro MAF()
+ * which provides the sizeof the elements to an inline function.
+ *
+ * EXAMPLE:
+ * int cnt;
+ * char **ptr1;
+ * int *ptr2;
+ * struct foo *ptr3;
+ * lh_multiarray_allocate(cnt, num, MAF(ptr1), MAF(ptr2), MAF(ptr3));
+ */
+
+#define MAF(ptr) ((void **)(&(ptr))),sizeof(*ptr)
+
+/*! \brief Allocate a multi-array.
+ * This is an internal function used by the macros, do not use it directly.
+ */
+static inline void lh_multiarray_allocate_internal(int *cnt, int num, int gran, ...) {
+    va_list fields;
+    va_start( fields, gran );
+    do {
+        void **ptrp = va_arg(fields, void **);
+        if (!ptrp) break;
+        ssize_t so  = va_arg(fields, ssize_t);
+        *ptrp = malloc((so)*lh_align(num,gran));
+        memset(*ptrp, 0, (so)*lh_align(num,gran));
+    } while (1);
+    va_end( fields );
+    *cnt = num;
+}
+
+/*! \brief Allocate a multi-array with granularity 1.
+ * \param cnt Name of the counter variable.
+ * \param num Number of elements to allocate
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_allocate(cnt,num,...)                         \
+    lh_multiarray_allocate_internal(&cnt,num,1,__VA_ARGS__,NULL)
+
+/*! \brief Allocate a multi-array with granularity 1.
+ * \param cnt Name of the counter variable.
+ * \param num Number of elements to allocate
+ * \param gran Allocation granularity, must be power of 2
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_allocate_g(cnt,num,gran,...)                  \
+    lh_multiarray_allocate_internal(&cnt,num,gran,__VA_ARGS__,NULL)
+
+
+
+/*! \brief Resize a multi-array.
+ * This is an internal function used by the macros, do not use it directly.
+ */
+static inline void lh_multiarray_resize_internal(int *cnt, int num, int gran, ...) {
+    va_list fields;
+    va_start( fields, gran );
+    do {
+        void **ptrp = va_arg(fields, void **);
+        if (!ptrp) break;
+        ssize_t so  = va_arg(fields, ssize_t);
+        if ( lh_align(num,gran) > lh_align(*cnt,gran) ) {
+            *ptrp = realloc(*ptrp, so*lh_align(num,gran));
+            memset(((uint8_t*)*ptrp)+*cnt*so, 0, 
+                   so*(lh_align(num,gran)-lh_align(*cnt,gran)));
+        }
+    } while (1);
+    va_end( fields );
+    *cnt = num;
+}
+
+/*! \brief Resize a multi-array.
+ * \param cnt Name of the counter variable.
+ * \param num Number of elements to allocate
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_resize(cnt,num,...)                               \
+    lh_multiarray_resize_internal(&cnt,num,1,__VA_ARGS__,NULL)
+
+/*! \brief Resize a multi-array with a specific granularity
+ * \param cnt Name of the counter variable.
+ * \param num Number of elements to allocate
+ * \param gran Allocation granularity, must be power of 2
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_resize_g(cnt,num,gran,...)                        \
+    lh_multiarray_resize_internal(&cnt,num,gran,__VA_ARGS__,NULL)
+
+/*! \brief Add a number of elements to a multi-array
+ * \param cnt Name of the counter variable.
+ * \param num Number of elements to add
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_add(cnt,num,...)                                  \
+    lh_multiarray_resize_internal(&cnt,num+cnt,1,__VA_ARGS__,NULL)
+
+/*! \brief Add a number of elements to a multi-array, using granularity.
+ * \param cnt Name of the counter variable.
+ * \param num Number of elements to add
+ * \param gran Allocation granularity, must be power of 2
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_add_g(cnt,num,gran,...)                           \
+    lh_multiarray_resize_internal(&cnt,num+cnt,gran,__VA_ARGS__,NULL)
+
+
+////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LH_DECLARE_SHORT_NAMES
 
-#define ALIGN(num,align)                lh_align(num,align)
+#define ALIGN                           lh_align
 
-#define CLEAR(x)                        lh_clear_obj(x)
-#define CLEARP(x)                       lh_clear_ptr(x)
-#define CLEARN(x,n)                     lh_clear_num(x,n)
-#define CLEAR_RANGE(x,f,n)              lh_clear_range(x,f,n)
+#define CLEAR                           lh_clear_obj
+#define CLEARP                          lh_clear_ptr
+#define CLEARN                          lh_clear_num
+#define CLEAR_RANGE                     lh_clear_range
 
-#define CREATE(t,n)                     lh_create_obj(t,n)
-#define CREATEN(t,n,s)                  lh_create_num(t,n,s)
-#define CREATEB(n,s)                    lh_create_buf(n,s)
+#define CREATE                          lh_create_obj
+#define CREATEN                         lh_create_num
+#define CREATEB                         lh_create_buf
 
-#define ALLOC(p)                        lh_alloc_obj(p)
-#define ALLOCN(p,n)                     lh_alloc_num(p,n)
-#define ALLOCB(p,s)                     lh_alloc_buf(p,s)
+#define ALLOC                           lh_alloc_obj
+#define ALLOCN                          lh_alloc_num
+#define ALLOCB                          lh_alloc_buf
 
-#define RESIZE(p,n)                     lh_resize(p,n)
-#define ARRAY(t,p,c)                    lh_array(t,p,c)
-#define BUFFER(p,c)                     lh_buffer(p,c)
+#define RESIZE                          lh_resize
+#define ARRAY                           lh_array
+#define BUFFER                          lh_buffer
 
-#define ARRAY_ALLOCG(p,c,n,g)           lh_array_allocate_g(p,c,n,g)
-#define ARRAY_RESIZEG(p,c,n,g)          lh_array_resize_g(p,c,n,g)
-#define ARRAY_ADDG(p,c,n,g)             lh_array_resize_g(p,c,n,g)
+#define ARRAY_ALLOCG                    lh_array_allocate_g
+#define ARRAY_RESIZEG                   lh_array_resize_g
+#define ARRAY_ADDG                      lh_array_resize_g
 
-#define ARRAY_ALLOC(p,c,n)              lh_array_allocate(p,c,n)
-#define ARRAY_RESIZE(p,c,n)             lh_array_resize(p,c,n)
-#define ARRAY_ADD(p,c,n)                lh_array_resize(p,c,n)
+#define ARRAY_ALLOC                     lh_array_allocate
+#define ARRAY_RESIZE                    lh_array_resize
+#define ARRAY_ADD                       lh_array_resize
 
-#define ARRAY_DELETE_RANGE(p,c,f,n)     lh_array_delete_range(p,c,f,n)
-#define ARRAY_DELETE(p,c,i)             lh_array_delete_element(p,c,i)
-#define ARRAY_DELETE_RANGE_NU(p,c,f,n)  lh_array_delete_range_nu(p,c,f,n)
-#define ARRAY_DELETE_NU(p,c,i)          lh_array_delete_element_nu(p,c,i)
+#define ARRAY_DELETE_RANGE              lh_array_delete_range
+#define ARRAY_DELETE                    lh_array_delete_element
+#define ARRAY_DELETE_RANGE_NU           lh_array_delete_range_nu
+#define ARRAY_DELETE_NU                 lh_array_delete_element_nu
+
+#define MARR_ALLOCG                     lh_multiarray_allocate_g
+#define MARR_RESIZEG                    lh_multiarray_resize_g
+#define MARR_ADDG                       lh_multiarray_add_g
+
+#define MARR_ALLOC                      lh_multiarray_allocate
+#define MARR_RESIZE                     lh_multiarray_resize
+#define MARR_ADD                        lh_multiarray_add
 
 #endif
 

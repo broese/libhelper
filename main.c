@@ -420,9 +420,58 @@ int test_wstream() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int test_files() {
-    
+    printf("\n\n====== Testing bytestream writing ======\n");
+    int fail = 0, f;
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
 }
 
+typedef struct {
+    int cnt;
+    char              * status;
+    uint16_t          * flags;
+    const char       ** name;
+    double            * coord;
+} ma;
+
+int print_ma(ma *x) {
+    int i;
+    printf("cnt:%d status:%p flags:%p name:%p\n",
+           x->cnt,x->status,x->flags,x->name);
+    for(i=0; i<x->cnt; i++) {
+        printf("%2d  %c %04x %s\n",i,x->status[i],x->flags[i],x->name[i]);
+    }
+
+    return 0;
+}
+
+int test_multiarrays() {
+    printf("\n\n====== Testing multiarrays ======\n");
+    int fail = 0, f;
+
+    ma x; CLEAR(x);
+    print_ma(&x);
+
+    lh_multiarray_allocate(x.cnt, 3, MAF(x.status), MAF(x.flags), MAF(x.name));
+    x.status[0]='A'; x.status[1]='B'; x.status[2]='C';
+    x.flags[0]=0x000a;x.flags[1]=0x0b00;x.flags[2]=0xC000;
+    x.name[0]="Alice";x.name[1]="Bob";x.name[2]="Charlie";
+    print_ma(&x);
+
+    lh_multiarray_resize(x.cnt, 17, MAF(x.status), MAF(x.flags), MAF(x.name));
+    x.status[6]='G'; x.status[7]='H'; x.status[8]='I';
+    x.flags[6]=0xaaaa;x.flags[7]=0x1111;x.flags[8]=0x5555;
+    x.name[6]="George";x.name[7]="Henry";x.name[8]="Irene";
+    print_ma(&x);
+
+    lh_multiarray_resize(x.cnt, 8, MAF(x.status), MAF(x.flags), MAF(x.name));
+    print_ma(&x);
+
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
 
 
 
@@ -800,6 +849,7 @@ int main(int ac, char **av) {
 
     int fail = 0;
 
+    /*
     //// lh_buffers.h
     fail += test_align();
     fail += test_clear();
@@ -810,11 +860,11 @@ int main(int ac, char **av) {
     fail += test_bswap();
     fail += test_stream();
     fail += test_wstream();
+    */
 
 
 
-
-    //test_multiarrays();
+    fail += test_multiarrays();
     //test_files();
     //test_compression();
     //test_image2();
