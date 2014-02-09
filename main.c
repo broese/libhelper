@@ -468,6 +468,9 @@ int test_multiarrays() {
     lh_multiarray_resize(x.cnt, 8, MAF(x.status), MAF(x.flags), MAF(x.name));
     print_ma(&x);
 
+    lh_multiarray_delete_range(x.cnt, 3, 2, MAF(x.status), MAF(x.flags), MAF(x.name));
+    print_ma(&x);
+
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;

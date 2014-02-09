@@ -341,6 +341,45 @@ static inline void lh_multiarray_resize_internal(int *cnt, int num, int gran, ..
     lh_multiarray_resize_internal(&cnt,num+cnt,gran,__VA_ARGS__,NULL)
 
 
+/*! \brief Delete a range of elements in a multi-array.
+ * This is an internal function used by the macros, do not use it directly.
+ */
+static inline void lh_multiarray_delete_internal(int *cnt, int from, int num, ...) {
+    va_list fields;
+    va_start( fields, num );
+    do {
+        uint8_t **ptrp = va_arg(fields, uint8_t **);
+        if (!ptrp) break;
+        ssize_t so  = va_arg(fields, ssize_t);
+        lh_array_delete_range_nu(*ptrp, *cnt*so, from*so, num*so);
+    } while (1);
+    va_end( fields );
+    *cnt -= num;
+}
+
+/*! \brief Delete a range of elements in a multi-array.
+ * \param cnt Name of the counter variable.
+ * \param from Index of the first element to delete
+ * \param num Number of elements to delete
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_delete_range(cnt,from,num,...)                \
+    lh_multiarray_delete_internal(&cnt,from,num,__VA_ARGS__,NULL)
+
+/*! \brief Delete a single element in a multi-array.
+ * \param cnt Name of the counter variable.
+ * \param idx Index of the element to delete
+ * \param ... List of pointers to the array variables
+ */
+#define lh_multiarray_delete(cnt,idx,...)                       \
+    lh_multiarray_delete_internal(&cnt,idx,1,__VA_ARGS__,NULL)
+
+
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LH_DECLARE_SHORT_NAMES
@@ -384,6 +423,9 @@ static inline void lh_multiarray_resize_internal(int *cnt, int num, int gran, ..
 #define MARR_ALLOC                      lh_multiarray_allocate
 #define MARR_RESIZE                     lh_multiarray_resize
 #define MARR_ADD                        lh_multiarray_add
+
+#define MARR_DELETE                     lh_multiarray_delete
+#define MARR_DELETE_RANGE               lh_multiarray_delete_range
 
 #endif
 
