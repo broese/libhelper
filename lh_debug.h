@@ -60,6 +60,11 @@ via exit(1).
 
 #endif
 
+
+#define LH_DEBUG(msg,...)                               \
+    fprintf(stderr, "%s:%d (%s) : " msg "\n",           \
+            __FILE__,__LINE__,__func__,##__VA_ARGS__);
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void hexdump(const unsigned char * data, ssize_t length);
