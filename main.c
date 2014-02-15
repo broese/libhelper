@@ -3,11 +3,11 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
-
-#if 0
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#if 0
 #include <unistd.h>
 #include <fcntl.h>
 #endif
@@ -22,13 +22,13 @@
 
 #include "lh_buffers.h"
 #include "lh_bytes.h"
+#include "lh_net.h"
+#include "lh_event.h"
 
 #if 0
 #include "lh_files.h"
 #include "lh_compress.h"
 #include "lh_image.h"
-#include "lh_net.h"
-#include "lh_event.h"
 
 #define ALLOC_GRAN 4
 #define BUF_GRAN   64
@@ -427,6 +427,8 @@ int test_files() {
     return fail;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 typedef struct {
     int cnt;
     char              * status;
@@ -476,6 +478,166 @@ int test_multiarrays() {
     return fail;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+int test_bprintf() {
+    printf("\n\n====== Testing bprintf ======\n");
+    int fail = 0, f;
+
+    uint8_t * test_ptr = NULL;
+    ssize_t test_len = 0;
+
+    //lh_array_resize_g(ptr,len,10,256);
+
+    int res;
+    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_len);
+    hexdump(test_ptr, test_len);
+    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_len);
+    hexdump(test_ptr, test_len);
+    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_len);
+    hexdump(test_ptr, test_len);
+
+    test_len = LH_BUFPRINTF_GRAN;
+    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_len);
+    hexdump(test_ptr, test_len);
+
+    test_len = 512;
+    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_len);
+    hexdump(test_ptr, test_len);
+    
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct {
+    uint8_t * rbuf;
+    ssize_t   rlen;
+    uint8_t * wbuf;
+    ssize_t   wlen;
+} client;
+
+void process_requests(client *c, int finalize) {
+    int linecount=0;
+    int lastpos=-1;
+
+    // find the location of the last newline in the buffer
+    int i;
+    for(i=0; i<c->rlen; i++) {
+        if (c->rbuf[i] == 0x0a) {
+            lastpos = i;
+            linecount++; // count lines
+        }
+    }
+
+    // delete all counted lines from the receive buffer
+    lh_array_delete_range(c->rbuf, c->rlen, 0, lastpos+1);
+
+    if (finalize) {
+        c->rlen = 0; //delete everything
+        linecount++;
+    }
+
+    // write response
+    bprintf(c->wbuf, c->wlen, "Test Server: received %d lines\n",linecount);
+    if (finalize) bprintf(c->wbuf, c->wlen, "*** Good Bye ***\n",linecount);
+}
+
+int test_event() {
+    printf("\n\n====== Testing event framework ======\n");
+    int fail = 0, f;
+
+    int ss = lh_listen_tcp4_any(23456);
+    if (ss<0) {
+        printf("-----\ntotal: %s\n", PASSFAIL(0));
+        return 1;
+    }
+
+    lh_pollarray_create(pa);
+    lh_pollgroup_create(server);
+    lh_pollgroup_create(clients);
+
+    lh_poll_add(&pa, &server, ss, MODE_R, NULL);
+
+    int stay = 1, i;
+    int maxcount = 100;
+    while(stay && maxcount>0) {
+        lh_poll(&pa, 1000);
+        int fd;
+        FILE *fp;
+
+        while ((fd=lh_poll_next_readable(&server,NULL,NULL))>0) {
+            // accept new connection
+            struct sockaddr_in cadr;
+            int cl = lh_accept_tcp4(fd, &cadr);
+            if (cl < 0) break;
+            printf("Accepted from %s:%d\n",
+                   inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
+
+            // Create a FILE*
+            FILE * clfp = fdopen(cl, "r+");
+            if (!clfp) LH_ERROR(1,"Failed to fdopen");
+
+            fprintf(clfp, "Welcome to the server!\n");
+            fflush(clfp);
+
+            // create a new client instance
+            CREATE(client, c);
+            lh_poll_add_fp(&pa, &clients, clfp, MODE_R, c);
+        }
+
+        client * c;
+        while ((fd=lh_poll_next_readable(&clients,&fp,(void **)&c))>0) {
+            int res = lh_poll_read(fd, &c->rbuf, &c->rlen, 65536);
+            switch (res) {
+            case LH_EVSTATUS_EOF:
+                process_requests(c,1);
+                break;
+            case LH_EVSTATUS_OK:
+            case LH_EVSTATUS_WAIT:
+                process_requests(c,0);
+                break;
+            case LH_EVSTATUS_ERROR:
+                fprintf(stderr,"error on socket %d, closing\n",fd);
+                if (c->rbuf) free(c->rbuf);
+                if (c->wbuf) free(c->wbuf);
+                free(c);
+                lh_poll_remove(&pa, fd);
+                break;
+            }
+
+            // do we have data to send back to the client?
+            if (c->wlen > 0) {
+                fprintf(stderr,"Sending response to socket %d\n",fd);
+                switch(lh_poll_write_once(fd, c->wbuf, &c->wlen)) {
+                case LH_EVSTATUS_ERROR:
+                    if (c->rbuf) free(c->rbuf);
+                    if (c->wbuf) free(c->wbuf);
+                    free(c);
+                    lh_poll_remove(&pa, fd);
+                    break;
+                case LH_EVSTATUS_WAIT:
+                    LH_DEBUG("FIXME: handle LH_EVSTATUS_WAIT\n");
+                    // remaining data might be send later if we have another request
+                    break;
+                }
+            }
+        }
+    }
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
 
 
 
@@ -511,40 +673,6 @@ int test_multiarrays() {
     printf("ss=%8p len=%d >%s<\n",ss,len,ss);
     hexdump(ss, 32);
 
-#endif
-
-
-#if 0
-typedef struct {
-    int num;
-    int * dongs;
-    face * wangs;
-    char ** herps;
-    void ** derps;
-} harbl;
-
-#define TESTHERPS(name) hexdump((char*)name,h.num*sizeof(*name)); printf("\n")
-
-void test_multiarrays() {
-    printf("Testing Multiarrays\n");
-
-    harbl h;
-    CLEAR(h);
-
-    ARRAYS_ADD(h.num,3,h.dongs,h.wangs,h.herps,h.derps);
-    hexdump((char *)&h,sizeof(h));
-    TESTHERPS(h.dongs);
-    TESTHERPS(h.wangs);
-    TESTHERPS(h.herps);
-    TESTHERPS(h.derps);
-
-    ARRAYS_ADD(h.num,7,h.dongs,h.wangs,h.herps,h.derps);
-    hexdump((char *)&h,sizeof(h));
-    TESTHERPS(h.dongs);
-    TESTHERPS(h.wangs);
-    TESTHERPS(h.herps);
-    TESTHERPS(h.derps);
-}
 #endif
 
 
@@ -648,144 +776,6 @@ void test_image_resize() {
     printf("Exported size : %zd\n",osize);
 }
 
-void test_wstream() {
-    char buf[4096];
-    char *p = buf;
-
-    write_char(p,0x11);
-    write_short(p,0x2233);
-    write_int(p,0x44556677);
-    write_long(p,0x8899AABBCCDDEEFFLL);
-
-    hexdump(buf, p-buf);
-}
-
-void test_server() {
-    int ss = sock_server_ipv4_tcp_any(23456);
-    if (ss >= 0) sleep(1000);
-}
-
-typedef struct {
-    uint8_t * data;
-    ssize_t len;
-} buffer_t;
-
-#if 1
-void test_event() {
-    int ss = sock_server_ipv4_tcp_any(23456);
-    if (ss<0) return;
-
-    pollarray pa;
-    CLEAR(pa);
-
-    pollgroup sg;
-    CLEAR(sg);
-
-    pollgroup cg;
-    CLEAR(cg);
-
-    pollarray_add(&pa, &sg, ss, MODE_R, NULL);
-
-    int stay = 1, i;
-    int maxcount = 100;
-    while(stay && maxcount>0) {
-        evfile_poll(&pa, 1000);
-        for(i=0; i<cg.en; i++) {
-            int idx = cg.e[i];
-            FILE * file = pa.files[idx];
-            printf("Error on client %d, fd=%d\n",idx, fileno(file));
-        }
-
-        // handle server requests
-        for(i=0; i<sg.rn; i++) {
-            struct sockaddr_in cadr;
-            int size = sizeof(cadr);
-            int cl = accept(pa.p[sg.r[i]].fd, (struct sockaddr *)&cadr, &size);
-            if (cl < 0) printf("Failed to accept, %s\n",strerror(errno));
-            printf("Accepted from %s:%d\n",inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
-
-            if (fcntl(cl, F_SETFL, O_NONBLOCK) < 0) printf("Failed to set non-block, %s\n",strerror(errno));
-
-            FILE * csock = fdopen(cl, "r+");
-            if (!csock) printf("Failed to fdopen, %s\n",strerror(errno));
-            fprintf(csock, "Welcome to the leet server\n");
-            fflush(csock);
-
-            ALLOC(buffer_t,buf);
-
-            pollarray_add_file(&pa, &cg, csock, MODE_R, buf);
-        }
-
-        // handle client requests
-        for(i=0; i<cg.rn; i++) {
-            int idx = cg.r[i];
-            FILE * fd = pa.files[idx];
-            buffer_t * b = pa.data[idx];
-            //uint8_t buf[256];
-            //ssize_t len = 0;
-
-            //int res = evfile_read_once(fileno(fd),buf,sizeof(buf),&len);
-            int res = evfile_read(fileno(fd),&b->data,&b->len,128);
-            printf("evfile_read returned %d, len=%zd fd=%d\n",res,b->len,fileno(fd));
-            hexdump(b->data,b->len);
-
-            int kill=0;
-            switch (res) {
-            case EVFILE_OK:
-                printf("Have read as much as possible, buffer is full, processing %zd bytes\n",b->len);
-                break;
-            case EVFILE_WAIT:
-                printf("No more input data for now, processing %zd bytes\n",b->len);
-                break;
-            case EVFILE_EOF:
-                printf("End of file, removing client %d and processing %zd bytes\n",fileno(fd),b->len);
-                kill=1;
-                break;
-            case EVFILE_ERROR:
-                printf("Error occured, removing client %d\n",fileno(fd));
-                kill=1;
-                break;
-            }
-
-            if (kill) {
-                buffer_t * b = pa.data[idx];
-                printf("buffer : %8p\n",b);
-                if (b->data) free(b->data);
-                free(b);
-                pollarray_remove_file(&pa, fd);
-                fclose(fd);
-            }
-
-        }
-
-        if (cg.en > 0) {
-            printf("EV error\n");
-            exit(1);
-        }
-
-#if 0
-        for(i=0; i<cg.en; i++) {
-            exit(1);
-            printf("%s:%d\n",__func__,__LINE__);
-            int idx = cg.e[i];
-            FILE * fd = pa.files[idx];
-            buffer_t * b = pa.data[idx];
-            printf("%s:%d file=%08p fd=%d\n",__func__,__LINE__,fd,fileno(fd));
-            if (b->data) free(b->data);
-            //free(b);
-            fclose(fd);
-            printf("%s:%d\n",__func__,__LINE__);
-            printf("Closed FILE %d\n",pa.p[cg.e[i]].fd);
-            pollarray_remove_file(&pa, fd);
-            //i--;
-            printf("%s:%d\n",__func__,__LINE__);
-            //exit(1);
-        }
-#endif
-    }
-}
-#endif
-
 #include <time.h>
 
 void benchmark_allocation(int narrays, int gran) {
@@ -858,23 +848,30 @@ int main(int ac, char **av) {
     fail += test_clear();
     fail += test_alloc();
     fail += test_arrays();
+    fail += test_multiarrays();
+    fail += test_bprintf();
+    */
 
+    /*
     //// lh_bytes.h
     fail += test_bswap();
     fail += test_stream();
     fail += test_wstream();
+
+    //// lh_files.h
+    //fail += test_files();
     */
+    
+    //// lh_net.h
+    //// lh_event.h
+    test_event();
 
 
-
-    fail += test_multiarrays();
-    //test_files();
     //test_compression();
     //test_image2();
     //test_image_resize();
 
     //test_server();
-    //test_event();
 
     //test_dns();
 

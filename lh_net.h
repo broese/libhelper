@@ -19,21 +19,23 @@
 
 // TCP functions
 
-/*! \brief Opens an IPv4/TCP listening socket on specific address and port, with default parameters
+/*! \brief Opens an IPv4/TCP listening socket on specific address and
+ * port, with default parameters
  * \param ip IP address to bind to, in host byteorder
  * \param port Port number to bind to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-int lh_sock_server_ipv4_tcp(uint32_t ip, uint16_t port);
+int lh_listen_tcp4(uint32_t ip, uint16_t port);
 
 /*! \brief Open an IPv4/TCP listening socket on localhost and a specific port
  * \param port Port number to bind to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-#define lh_sock_server_ipv4_tcp_local(port) sock_server_ipv4_tcp(INADDR_LOOPBACK,(port))
+#define lh_listen_tcp4_local(port) lh_listen_tcp4(INADDR_LOOPBACK,(port))
 
-/*! \brief Open an IPv4/TCP listening socket on all interfaces and a specific port
+/*! \brief Open an IPv4/TCP listening socket on all interfaces and
+ * a specific port
  * \param port Port number to bind to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-#define lh_sock_server_ipv4_tcp_any(port) sock_server_ipv4_tcp(INADDR_ANY,(port))
+#define lh_listen_tcp4_any(port) lh_listen_tcp4(INADDR_ANY,(port))
 
 /*! \brief Accept a IPv4/TCP connection from a remote client and set the
  * client socket to non-blocking mode.
@@ -48,7 +50,7 @@ int lh_accept_tcp4(int ssock, struct sockaddr_in *cadr);
  * \param ip IP address to connect to, in host byteorder
  * \param port Port number to connect to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-int lh_sock_client_ipv4_tcp(uint32_t ip, uint16_t port);
+int lh_connect_tcp4(uint32_t ip, uint16_t port);
 
 // UDP functions
 
@@ -56,25 +58,26 @@ int lh_sock_client_ipv4_tcp(uint32_t ip, uint16_t port);
  * \param ip IP address to bind to, in host byteorder
  * \param port Port number to bind to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-int lh_sock_server_ipv4_udp(uint32_t ip, uint16_t port);
+int lh_listen_udp4(uint32_t ip, uint16_t port);
 
 /*! \brief Opens an IPv4/UDP socket on localhost and a specific port
  * \param ip IP address to bind to, in host byteorder
  * \param port Port number to bind to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-#define lh_sock_server_ipv4_udp_local(port) sock_server_ipv4_udp(INADDR_LOOPBACK,(port))
+#define lh_listen_udp4_local(port) lh_listen_udp4(INADDR_LOOPBACK,(port))
 
 /*! \brief Opens an IPv4/UDP socket on all interfaces and a specific port
  * \param ip IP address to bind to, in host byteorder
  * \param port Port number to bind to, in host byteorder
  * \return Socket FD on success, -1 on failure. */
-#define lh_sock_server_ipv4_udp_any(port) sock_server_ipv4_udp(INADDR_ANY,(port))
+#define lh_listen_udp4_any(port) lh_listen_udp4(INADDR_ANY,(port))
 
 
 // DNS functions
 /*! \brief Get an IPv4 address from a hostname
  * \param hostname host name or dotted IP address as a string
- * \return IPv4 address as integer (in host byteorder), 0xFFFFFFFF if failed to resolve
+ * \return IPv4 address as integer (in host byteorder),
+ * 0xFFFFFFFF if failed to resolve
  */
 uint32_t lh_dns_addr_ipv4(const char *hostname);
 
@@ -82,13 +85,14 @@ uint32_t lh_dns_addr_ipv4(const char *hostname);
 
 #ifdef LH_DECLARE_SHORT_NAMES
 
-#define sock_server_ipv4_tcp            lh_sock_server_ipv4_tcp
-#define sock_server_ipv4_tcp_local      lh_sock_server_ipv4_tcp_local
-#define sock_server_ipv4_tcp_any        lh_sock_server_ipv4_tcp_any
-#define sock_client_ipv4_tcp            lh_client_ipv4_tcp
-#define sock_server_ipv4_udp            lh_sock_server_ipv4_udp
-#define sock_server_ipv4_udp_local      lh_sock_server_ipv4_udp_local
-#define sock_server_ipv4_udp_any        lh_sock_server_ipv4_udp_any
+#define listen_tcp4                     lh_listen_tcp4
+#define listen_tcp4_local               lh_listen_tcp4_local
+#define listen_tcp4_any                 lh_listen_tcp4_any
+#define connect_tcp4                    lh_connect_tcp4
+#define accept_tcp4                     lh_accept_tcp4
+#define listen_udp4                     lh_listen_udp4
+#define listen_udp4_local               lh_listen_udp4_local
+#define listen_udp4_any                 lh_listen_udp4_any
 #define dns_addr_ipv4                   lh_dns_addr_ipv4
 
 #endif

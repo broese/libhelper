@@ -24,7 +24,7 @@ static inline int sock_bind_ipv4(int s, uint32_t ip, uint16_t port) {
 }
 
 // generic function to create listening TCP sockets for IPv4
-int lh_sock_server_ipv4_tcp(uint32_t ip, uint16_t port) {
+int lh_listen_tcp4(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s < 0)
         LH_ERROR(-1, "%s: failed to create socket", __func__);
@@ -42,7 +42,7 @@ int lh_sock_server_ipv4_tcp(uint32_t ip, uint16_t port) {
 }
 
 // generic function to create bound UDP sockets for IPv4
-int lh_sock_server_ipv4_udp(uint32_t ip, uint16_t port) {
+int lh_listen_udp4(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (s < 0)
         LH_ERROR(-1, "%s: failed to create socket", __func__);
@@ -68,7 +68,7 @@ int lh_accept_tcp4(int ssock, struct sockaddr_in *cadr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // make a TCP connection to a remote machine
-int lh_sock_client_ipv4_tcp(uint32_t ip, uint16_t port) {
+int lh_connect_tcp4(uint32_t ip, uint16_t port) {
     int s = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (s < 0)
         LH_ERROR(-1, "%s: failed to create socket", __func__);

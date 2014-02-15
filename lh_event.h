@@ -6,59 +6,149 @@
 
 #include <poll.h>
 
-#define DEFAULT_POLL_TIMEOUT 20
+////////////////////////////////////////////////////////////////////////////////
+/** @name Management of poll events
+ * Low-level interface to poll() functions, management of registered file
+ * descriptors
+ */
+
+#ifndef LH_POLL_TIMEOUT
+#define LH_POLL_TIMEOUT 20
+#endif
+
+#define LH_PA_GRAN 16
+#define LH_PG_GRAN 16
+
 #define MODE_R  POLLIN
 #define MODE_W  POLLOUT
 #define MODE_RW (POLLIN|POLLOUT)
 
-// struct pollgroup is used to return the results of the poll()
-// evfile_poll() will fill the r,w and e arrays with the indexes of
-// pollarray elements that became readable, writable, or have errors,
-// respectively. The rn, wn and en integers store the number of indexes
-// in each array.
-// The r,w and e arrays must be pre-allocated to the total number of
-// file descriptors managed by the group before calling evfile_poll(), in
-// order to provide sufficient space for each situation.
-// The user should pre-allocate and zero this structure before use
-// The user can maintain multiple such structures and specify one of them
-// when assigning a new file descriptor to a pollarray
+typedef struct lh_polldata lh_polldata;
+
+/*! \brief This struct carries two arrays - \c poll and \c data. \c poll is
+ * directly passed to poll(), while \c data carries all auxiliary data to the
+ * file descriptors, since it cannot be stored in the <tt>struct pollfd</tt>.
+ * Both arrays have the same length, stored in \c num
+ */
 typedef struct {
-    int     num;        // allocated number
+    int                 nfd;    // number of registered file descriptors
+    struct pollfd     * poll;   // pollfd array - directly passed to poll()
+    lh_polldata       * data;   // associated data
+} lh_pollarray;
 
-    int     rn;         // readable descriptors
-    int   * r;
-
-    int     wn;         // writable descriptors
-    int   * w;
-
-    int     en;         // descriptors with errors
-    int   * e;
-} pollgroup;
-
-// semi-global array of descriptors polled in a single poll() calls
-// the user can maintain multiple of such objects,
-// though in most cases this won't be practical or necessary
 typedef struct {
-    int     num;        // total number of file descriptors
-    FILE ** files;      // POSIX-style descriptors
-    struct pollfd * p;  // pollfd array - contains integer descriptors and poll masks
-    void ** data;       // opaque private data
-    pollgroup ** group; // pointer to the group
-} pollarray;
+    lh_pollarray *pa;   // associated poll array
 
-int pollarray_add(pollarray * pa, pollgroup * pg, int fd, short mode, void * data);
-int pollarray_add_file(pollarray * pa, pollgroup * pg, FILE *fd, short mode, void * data);
-int pollarray_remove(pollarray * pa, int fd);
-int pollarray_remove_file(pollarray *pa, FILE *fd);
-int pollarray_find(pollarray * pa, int fd);
-int pollarray_find_file(pollarray * pa, FILE *fd);
+    int num;        // number of allocated entries;
 
-int evfile_poll(pollarray *pa, int timeout);
+    int rn;         // number of readable descriptors
+    int *r;         // readable descriptors (indices to pollarray)
+
+    int wn;         // number of writable descriptors
+    int *w;         // writable descriptors (indices to pollarray)
+
+    int en;         // number of descriptors with errors
+    int *e;         // erroneous descriptors (indices to pollarray)
+} lh_pollgroup;
+    
+/*! \brief This struct carries additional data associated with a specific file
+ * descriptor, since it cannot be stored in the standard struct pollfd
+ */
+typedef struct lh_polldata {
+    FILE          * fp;     // file pointer associated with this file descriptor
+                            // NULL if none was created
+    void          * data;   // opaque private data
+    lh_pollgroup  * group;  // pointer to associated pollgroup
+} lh_polldata;
 
 ////////////////////////////////////////////////////////////////////////////////
-// read/write functions
+
+#define lh_pollarray_create(name)               \
+    lh_pollarray name;                          \
+    lh_clear_obj(name);
+
+#define lh_pollgroup_create(name)               \
+    lh_pollgroup name;                          \
+    lh_clear_obj(name);
+
+int lh_poll_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, short mode, void *data);
+int lh_poll_add_fp(lh_pollarray * pa, lh_pollgroup *pg, FILE *fp, short mode, void *data);
+int lh_poll_find(lh_pollarray *pa, int fd);
+int lh_poll_find_fp(lh_pollarray *pa, FILE *fp);
+int lh_poll_remove(lh_pollarray *pa, int fd);
+int lh_poll_remove_fp(lh_pollarray *pa, FILE *fp);
+
+int lh_poll(lh_pollarray *pa, int timeout);
+int lh_poll_next_readable(lh_pollgroup *pg, FILE **fpp, void **datap);
+int lh_poll_next_writable(lh_pollgroup *pg, FILE **fpp, void **datap);
+int lh_poll_next_error(lh_pollgroup *pg, FILE **fpp, void **datap);
+
+////////////////////////////////////////////////////////////////////////////////
+/** @name Reading and writing using resizable buffers
+ * Supporting functions to handle sending and receiving data via asynchronous
+ * connections, typically network sockets.
+ */
+
+#define LH_POLL_BUFGRAN 4096
+
+#define LH_EVSTATUS_OK    0
+// successful read up to maxread and more data may be available
+
+#define LH_EVSTATUS_WAIT  1
+// no further data is available at the moment
+// more data may arrive later, wait for another poll event
+
+#define LH_EVSTATUS_EOF   2
+// no errors, but encountered the end of file
+// no more data will be available
+
+#define LH_EVSTATUS_ERROR 3
+// unsuccessful read, encountered an error and aborted the operation
+// no more data will be available
+
+/*! \brief Read data from a file descriptor, as much as possible, but
+ * not exceeding the buffer size
+ * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
+ * otherwise the function will block until EOF, error or buffer is full
+ * \param ptr Pointer to the start of buffer
+ * \param bufsize Size of the buffer
+ * \param len Pointer to a ssize_t variable indicating the current length
+ * \return Status code - one of the LH_STATUS_* constants
+ */
+int lh_poll_read_once(int fd, uint8_t *ptr, ssize_t bufsize, ssize_t *len);
+
+/*! \brief Read data from a file descriptor, as much as possible, but at most
+ * the defined maxread amount, resizing buffer as necessary
+ * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
+ * otherwise the function will block until EOF, error or buffer is full
+ * \param ptrp Pointer to the buffer pointer
+ * \param lenp Pointer to the buffer length variable
+ * \param maxread Maximum amount to read, set to <=0 to use default amount
+ * (read to next LH_POLL_BUFGRAN boundary)
+ * \return Status code - one of the LH_STATUS_* constants
+ */
+int lh_poll_read(int fd, uint8_t **ptrp, ssize_t *lenp, ssize_t maxread);
+
+/*! \brief Write data to a file descriptor, as much as possible. Successfully
+ * written data will be removed from the buffer.
+ * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
+ * otherwise the function will block file descriptor becomes writable again
+ * \param ptr Pointer to the data buffer
+ * \param lenp Pointer to the data length variable
+ * \return Status code - one of the LH_STATUS_* constants
+ */
+int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp);
+
+
+
+#if 0
+
 
 /*
+  This is a retained piece of documentation from a previous version
+  of event implementation. This info is still mostly valid, although
+  the names have changed. The "Type 3" interface is not implemented
+
   Note on evfile-controlled reading and writing functions.
   As one of the arguments, they will expect a buffer, defined by:
    - uint8_t * ptr   - start of useful data
@@ -103,16 +193,4 @@ int evfile_poll(pollarray *pa, int timeout);
 
 */
 
-#define EVFILE_BUFGRAN 4096
-
-#define EVFILE_OK       0 // successful read up to maxread and more data may be available
-#define EVFILE_WAIT     1 // successful read, but no further data available at the moment
-                          // due to EAGAIN, more data could be available later
-#define EVFILE_EOF      2 // successful read, but encountered end of file, so no more
-                          // data will be available
-#define EVFILE_ERROR    3 // unsuccessful read, encountered an error and aborted
-                          // the operation - no more data will be available
-
-int evfile_read_once(int fd, uint8_t *ptr, ssize_t bufsize, ssize_t *len);
-int evfile_read(int fd, uint8_t **ptr, ssize_t *len, ssize_t maxread);
-
+#endif
