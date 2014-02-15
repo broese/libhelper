@@ -374,9 +374,52 @@ static inline void lh_multiarray_delete_internal(int *cnt, int from, int num, ..
 #define lh_multiarray_delete(cnt,idx,...)                       \
     lh_multiarray_delete_internal(&cnt,idx,1,__VA_ARGS__,NULL)
 
+////////////////////////////////////////////////////////////////////////////////
 
+#define LH_BUFPRINTF_GRAN 64
 
+static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, const char *fmt,...) {
+    // remaining space in the allocated buffer
+    ssize_t remsize = lh_align(*lenp,gran)-*lenp;
 
+    // allocate buffer if it's not allocated at all
+    // so the snprintf won't bail out due to a NULL pointer
+    if (!*bufp || *lenp==0) {
+        lh_resize(*bufp,gran);
+        *lenp = 0;
+        remsize = gran;
+    }
+    else {
+        // otherwise ensure granularity
+        lh_array_setgran(*bufp, *lenp, gran);
+    }
+
+    uint8_t *pos = *bufp+*lenp;
+
+    va_list args;
+
+    va_start(args,fmt);
+    int plen = vsnprintf(pos, remsize, fmt, args);
+    va_end(args);
+
+    if (plen < 0) return plen; // error occured
+
+    if (plen >= remsize) {
+        // The space was not sufficient for the written string
+        // (including terminator). Resize and repeat
+        lh_resize(*bufp, lh_align(plen+1+*lenp, gran));
+        pos = *bufp+*lenp;
+
+        va_start(args,fmt);
+        plen = vsnprintf(pos, plen+1, fmt, args);
+        va_end(args);
+
+        if (plen < 0) return plen; // error occured
+    }
+
+    *lenp += plen;
+    return plen;
+}
 
 
 
@@ -426,6 +469,8 @@ static inline void lh_multiarray_delete_internal(int *cnt, int from, int num, ..
 
 #define MARR_DELETE                     lh_multiarray_delete
 #define MARR_DELETE_RANGE               lh_multiarray_delete_range
+
+#define bprintf(buf,len,fmt,...)        lh_bufprintf_g(&buf, &len, LH_BUFPRINTF_GRAN, fmt, __VA_ARGS__)
 
 #endif
 
