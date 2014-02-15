@@ -35,6 +35,14 @@ int lh_sock_server_ipv4_tcp(uint32_t ip, uint16_t port);
  * \return Socket FD on success, -1 on failure. */
 #define lh_sock_server_ipv4_tcp_any(port) sock_server_ipv4_tcp(INADDR_ANY,(port))
 
+/*! \brief Accept a IPv4/TCP connection from a remote client and set the
+ * client socket to non-blocking mode.
+ * \param ssock Listening TCP socket
+ * \param cadr Pointer to a <tt>struct sockaddr_in</tt> where the client
+ * address will be placed. Use NULL if not necessary.
+ * \return File descriptor of the client socket.
+ */
+int lh_accept_tcp4(int ssock, struct sockaddr_in *cadr);
 
 /*! \brief Open a IPv4/TCP connection to a remote address and port
  * \param ip IP address to connect to, in host byteorder
@@ -62,7 +70,6 @@ int lh_sock_server_ipv4_udp(uint32_t ip, uint16_t port);
  * \return Socket FD on success, -1 on failure. */
 #define lh_sock_server_ipv4_udp_any(port) sock_server_ipv4_udp(INADDR_ANY,(port))
 
-// FILE * accept_connection(int ssock, uint32_t);
 
 // DNS functions
 /*! \brief Get an IPv4 address from a hostname

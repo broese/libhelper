@@ -7,6 +7,9 @@
 #include "lh_files.h"
 #include "lh_net.h"
 
+#include <unistd.h>
+#include <fcntl.h>
+
 static inline int sock_bind_ipv4(int s, uint32_t ip, uint16_t port) {
     struct sockaddr_in sa = {
         .sin_family = AF_INET,
@@ -47,6 +50,19 @@ int lh_sock_server_ipv4_udp(uint32_t ip, uint16_t port) {
     if (sock_bind_ipv4(s,ip,port)) return -1;
 
     return s;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int lh_accept_tcp4(int ssock, struct sockaddr_in *cadr) {
+    socklen_t sa_size = sizeof(*cadr);
+    int cl = accept(ssock, (struct sockaddr *)cadr, cadr ? &sa_size : NULL);
+    if (cl<0) LH_ERROR(-1, "Failed to accept on socket %d",ssock);
+    if (fcntl(cl, F_SETFL, O_NONBLOCK) < 0) {
+        close(cl);
+        LH_ERROR(-1,"Failed to set O_NONBLOCK on client socket");
+    }
+    return cl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
