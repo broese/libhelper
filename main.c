@@ -563,10 +563,10 @@ int test_event() {
     }
 
     lh_pollarray_create(pa);
-    lh_pollgroup_create(server);
-    lh_pollgroup_create(clients);
+    lh_pollgroup_create(server,&pa);
+    lh_pollgroup_create(clients,&pa);
 
-    lh_poll_add(&pa, &server, ss, MODE_R, NULL);
+    lh_poll_add(&server, ss, MODE_R, NULL);
 
     int stay = 1, i;
     int maxcount = 100;
@@ -592,7 +592,7 @@ int test_event() {
 
             // create a new client instance
             CREATE(client, c);
-            lh_poll_add_fp(&pa, &clients, clfp, MODE_R, c);
+            lh_poll_add_fp(&clients, clfp, MODE_R, c);
         }
 
         client * c;

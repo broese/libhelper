@@ -1,8 +1,11 @@
 #include "lh_event.h"
 #include <unistd.h>
+#include <assert.h>
 
-int lh_poll_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, short mode, void *data) {
-    if (!pa) LH_ERROR(-1,"pollarray undefined");
+int lh_poll_add(lh_pollgroup *pg, int fd, short mode, void *priv) {
+    assert(pg);
+    lh_pollarray * pa = pg->pa;
+    assert(pa);
 
     lh_multiarray_add_g(pa->nfd,1,LH_PA_GRAN,MAF(pa->poll),MAF(pa->data));
 
@@ -10,7 +13,7 @@ int lh_poll_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, short mode, void *d
     struct pollfd *pf = pa->poll + pa->nfd-1;
 
     pd->fp          = NULL;
-    pd->data        = data;
+    pd->priv        = priv;
     pd->group       = pg;
 
     pf->fd          = fd;
@@ -25,9 +28,9 @@ int lh_poll_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, short mode, void *d
     return pa->nfd-1;
 }
 
-int lh_poll_add_fp(lh_pollarray * pa, lh_pollgroup *pg, FILE *fp, short mode, void *data) {
-    int index = lh_poll_add(pa, pg, fileno(fp), mode, data);
-    pa->data[index].fp = fp;
+int lh_poll_add_fp(lh_pollgroup *pg, FILE *fp, short mode, void *priv) {
+    int index = lh_poll_add(pg, fileno(fp), mode, priv);
+    pg->pa->data[index].fp = fp;
     return index;
 }
 
@@ -59,6 +62,17 @@ int lh_poll_remove(lh_pollarray *pa, int fd) {
 
 int lh_poll_remove_fp(lh_pollarray *pa, FILE *fp) {
     return lh_poll_remove(pa, fileno(fp));
+}
+
+void * lh_poll_priv(lh_pollarray *pa, int fd) {
+    int i = lh_poll_find(pa, fd);
+    if (i<0) return NULL;
+
+    return pa->data[i].priv;
+}
+
+void * lh_poll_priv_fp(lh_pollarray *pa, FILE *fp) {
+    return lh_poll_priv(pa, fileno(fp));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +111,7 @@ int lh_poll_next_readable(lh_pollgroup *pg, FILE **fpp, void **datap) {
     int i = pg->r[--pg->rn]; // take the last FD from the list and remove
 
     if (fpp) *fpp       = pa->data[i].fp;
-    if (datap) *datap   = pa->data[i].data;
+    if (datap) *datap   = pa->data[i].priv;
 
     return pa->poll[i].fd;
 }
@@ -109,7 +123,7 @@ int lh_poll_next_writable(lh_pollgroup *pg, FILE **fpp, void **datap) {
     int i = pg->r[--pg->wn]; // take the last FD from the list and remove
 
     if (fpp) *fpp       = pa->data[i].fp;
-    if (datap) *datap   = pa->data[i].data;
+    if (datap) *datap   = pa->data[i].priv;
 
     return pa->poll[i].fd;
 }
@@ -121,7 +135,7 @@ int lh_poll_next_error(lh_pollgroup *pg, FILE **fpp, void **datap) {
     int i = pg->r[--pg->en]; // take the last FD from the list and remove
 
     if (fpp) *fpp       = pa->data[i].fp;
-    if (datap) *datap   = pa->data[i].data;
+    if (datap) *datap   = pa->data[i].priv;
 
     return pa->poll[i].fd;
 }
@@ -130,29 +144,41 @@ int lh_poll_next_error(lh_pollgroup *pg, FILE **fpp, void **datap) {
 // Layer 2
 
 int lh_poll_read_once(int fd, uint8_t *ptr, ssize_t bufsize, ssize_t *len) {
-    // how much we still can read to fill the buffer?
-    ssize_t rlen = bufsize - *len;
 
-    // how many bytes did we read actually?
-    ssize_t rbytes = read(fd, ptr+(*len), rlen);
+    do {
+        // how much we still can read to fill the buffer?
+        ssize_t rlen = bufsize - *len;
 
-    if (rbytes < 0) { // error occured
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return LH_EVSTATUS_WAIT; // no more data, but no error
-        else
-            LH_ERROR(LH_EVSTATUS_ERROR, "Failed to read from fd=%d",fd);
-    }
+        // consider the read successful if the buffer is already full
+        //FIXME: should we return _OK, _ERROR or maybe _BUF?
+        if (rlen == 0) return LH_EVSTATUS_OK;
 
-    if (rbytes == 0) { // no error, but end of file
-        return LH_EVSTATUS_EOF;
-    }
+        // how many bytes did we read actually?
+        ssize_t rbytes = read(fd, ptr+(*len), rlen);
 
-    *len += rbytes;
+        if (rbytes < 0) { // error occured
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return LH_EVSTATUS_WAIT; // no error, just no more data to read
+            else
+                LH_ERROR(LH_EVSTATUS_ERROR, "Failed to read from fd=%d",fd);
+        }
 
-    if (rbytes < rlen) { // not enough data to read?
-        return LH_EVSTATUS_WAIT;
-    }
+        if (rbytes == 0) { // no error, but end of file
+            return LH_EVSTATUS_EOF;
+        }
 
+        assert(rbytes<=rlen);
+
+        *len += rbytes;
+    } while (*len < bufsize);
+    // *len < bufsize means that read() returned less bytes than requested.
+    // this is not an error, but may indicate an EAGAIN or EOF condition
+    // that follows if we try to read again. Let's do that by repeating
+    // the read and see if we hit one of these conditions.
+    // It is also possible that we will read more data - e.g. if another
+    // frame has arrived on a socket.
+
+    // Otherwise, the buffer is full, return OK
     return LH_EVSTATUS_OK;
 }
 
@@ -166,19 +192,22 @@ int lh_poll_read(int fd, uint8_t **ptrp, ssize_t *lenp, ssize_t maxread) {
     // determine to which data length should we read at most
     ssize_t boundary;
     if (maxread <= 0) {
-        boundary = lh_align(*lenp,LH_POLL_BUFGRAN);
-        if (boundary == *lenp)
-            boundary += LH_POLL_BUFGRAN;
+        // user did not specify maxread
+        // by default, read to the next granularity boundary
+        boundary = bufsize;
+
+        // if buffer is already full, read to the next gran boundary 
+        if (boundary == *lenp) boundary += LH_POLL_BUFGRAN;
     }
     else
         boundary = *lenp + maxread;
 
-    LH_DEBUG("len=%zd maxread=%zd\n",*lenp,maxread);
-
     int res = LH_EVSTATUS_OK;
     do {
+        assert(*lenp<=bufsize);
+
         // if we don't have anymore place in the buffer, allocate more
-        if (bufsize - *lenp <= 0) {
+        if (*lenp == bufsize) {
             bufsize += LH_POLL_BUFGRAN;
             lh_resize(*ptrp, bufsize);
         }
@@ -189,6 +218,9 @@ int lh_poll_read(int fd, uint8_t **ptrp, ssize_t *lenp, ssize_t maxread) {
 
         res = lh_poll_read_once(fd, *ptrp, rbound, lenp);
     } while (res == LH_EVSTATUS_OK && *lenp < boundary );
+
+    // stop reading if there is an error, EOF, EAGAIN condition
+    // or we have reached the read boundary
 
     return res;
 }
@@ -202,20 +234,68 @@ int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp) {
         if (errno==EAGAIN || errno==EWOULDBLOCK)
             return LH_EVSTATUS_WAIT;
         else
-            return LH_EVSTATUS_ERROR;
+            LH_ERROR(LH_EVSTATUS_ERROR,"Failed to write to fd=%d\n",fd);
     }
+
+    assert(wbytes <= *lenp);
 
     if (wbytes == *lenp) {
         // successful write, no issues
+        // remove all data from the buffer
         *lenp = 0;
     }
-    else if (wbytes < *lenp) {
+    else {
         // partial write, no error, but a next write may return one
         // remove the written chunk of data from the buffer
         lh_array_delete_range(ptr, *lenp, 0, wbytes);
     }
-    else {
-        LH_ERROR(LH_EVSTATUS_ERROR,"wbytes > len");
-    }
+
     return LH_EVSTATUS_OK;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+void lh_conn_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, void * priv) {
+    CREATE(lh_conn, conn);
+    conn->fd = fd;
+    conn->priv = priv;
+    lh_poll_add(pa, pg, fd, MODE_R, conn);
+}
+
+void lh_conn_process(lh_pollgroup *pg, lh_handler handler) {
+    int fd;
+
+    lh_conn *conn;
+    while ((fd=lh_poll_next_readable(pg,NULL,(void **)&conn))>0) {
+        conn->status = lh_poll_read(fd, &c->rbuf, &c->rlen, LH_BUF_MAXREAD);
+        ssize_t hres = handler(conn);
+        if (hres < 0) {
+            // error occured, or the handler simply wishes to close connection
+            // handle this by disabling the reading event. If there is data in
+            // the wbuf, the event handling will keep this connection in the
+            // list until all data is sent or error occurs, otherwise the
+            // connection will be closed at the end of this function
+            int i = lh_poll_find(pg->pa, fd);
+            pa->poll[i].events &= ~POLLIN;
+        }
+        else {
+            // successful read, delete data consumed by the handler from
+            // the rx buffer
+            //FIXME: do sanity checks
+            lh_array_delete_range(conn->rbuf, conn->rlen, 0, hres);
+        }
+        // if there is data in the write buffer, try sending it right now
+        if (conn->wlan > 0) {
+            int res = lh_poll_write_once(fd, conn->wbuf, conn->wlen);
+            if (res == LH_EVSTATUS_ERROR) {
+                // 
+                // fd no longer writable, stop checking for writable events
+                pa->poll[i].events &= ~POLLOUT;
+            }
+        }
+            
+    }
+}
+
+#endif

@@ -57,7 +57,7 @@ typedef struct {
 typedef struct lh_polldata {
     FILE          * fp;     // file pointer associated with this file descriptor
                             // NULL if none was created
-    void          * data;   // opaque private data
+    void          * priv;   // opaque private data
     lh_pollgroup  * group;  // pointer to associated pollgroup
 } lh_polldata;
 
@@ -67,21 +67,24 @@ typedef struct lh_polldata {
     lh_pollarray name;                          \
     lh_clear_obj(name);
 
-#define lh_pollgroup_create(name)               \
+#define lh_pollgroup_create(name,paname)        \
     lh_pollgroup name;                          \
-    lh_clear_obj(name);
+    lh_clear_obj(name);                         \
+    name.pa = (paname);
 
-int lh_poll_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, short mode, void *data);
-int lh_poll_add_fp(lh_pollarray * pa, lh_pollgroup *pg, FILE *fp, short mode, void *data);
+int lh_poll_add(lh_pollgroup *pg, int fd, short mode, void *priv);
+int lh_poll_add_fp(lh_pollgroup *pg, FILE *fp, short mode, void *priv);
 int lh_poll_find(lh_pollarray *pa, int fd);
 int lh_poll_find_fp(lh_pollarray *pa, FILE *fp);
 int lh_poll_remove(lh_pollarray *pa, int fd);
 int lh_poll_remove_fp(lh_pollarray *pa, FILE *fp);
+void * lh_poll_priv(lh_pollarray *pa, int fd);
+void * lh_poll_priv_fp(lh_pollarray *pa, FILE *fp);
 
 int lh_poll(lh_pollarray *pa, int timeout);
-int lh_poll_next_readable(lh_pollgroup *pg, FILE **fpp, void **datap);
-int lh_poll_next_writable(lh_pollgroup *pg, FILE **fpp, void **datap);
-int lh_poll_next_error(lh_pollgroup *pg, FILE **fpp, void **datap);
+int lh_poll_next_readable(lh_pollgroup *pg, FILE **fpp, void **privp);
+int lh_poll_next_writable(lh_pollgroup *pg, FILE **fpp, void **privp);
+int lh_poll_next_error(lh_pollgroup *pg, FILE **fpp, void **privp);
 
 ////////////////////////////////////////////////////////////////////////////////
 /** @name Reading and writing using resizable buffers
@@ -192,5 +195,36 @@ int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp);
   struct.
 
 */
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+
+#ifndef LH_BUF_GRAN
+#define LH_BUF_GRAN 4096
+#endif
+
+#ifndef LH_BUF_MAXREAD
+#define LH_BUF_MAXREAD 65536
+#endif
+
+typedef struct {
+    int fd;
+    int status;
+    uint8_t * rbuf;
+    ssize_t   rlen;
+    uint8_t * wbuf;
+    ssize_t   wlen;
+    void    * priv;
+} lh_conn;
+
+// return value : how much of the rx data has been consumed?
+// 0..rlen : normal, -1 : close connection
+typedef ssize_t (*lh_handler)(lh_conn *conn);
+
+void lh_conn_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, void * priv);
+void lh_conn_process(lh_pollgroup *pg, lh_handler handler);
 
 #endif
