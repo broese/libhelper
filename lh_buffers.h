@@ -470,7 +470,7 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
 #define MARR_DELETE                     lh_multiarray_delete
 #define MARR_DELETE_RANGE               lh_multiarray_delete_range
 
-#define bprintf(buf,len,fmt,...)        lh_bufprintf_g(&buf, &len, LH_BUFPRINTF_GRAN, fmt, __VA_ARGS__)
+#define bprintf(buf,len,fmt,...)        lh_bufprintf_g(&buf, &len, LH_BUFPRINTF_GRAN, fmt, ##__VA_ARGS__)
 
 #endif
 

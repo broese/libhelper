@@ -200,8 +200,6 @@ int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-
 #ifndef LH_BUF_GRAN
 #define LH_BUF_GRAN 4096
 #endif
@@ -224,7 +222,7 @@ typedef struct {
 // 0..rlen : normal, -1 : close connection
 typedef ssize_t (*lh_handler)(lh_conn *conn);
 
-void lh_conn_add(lh_pollarray * pa, lh_pollgroup *pg, int fd, void * priv);
+void lh_conn_add(lh_pollgroup *pg, int fd, void *priv);
 void lh_conn_process(lh_pollgroup *pg, lh_handler handler);
-
-#endif
+int *lh_conn_cleanup(lh_pollgroup *pg);
+void * lh_conn_remove(lh_pollgroup *pg, int fd);

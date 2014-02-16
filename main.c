@@ -2,15 +2,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-
-#if 0
-#include <unistd.h>
-#include <fcntl.h>
-#endif
 
 #ifdef HAVE_MTRACE
 #if DEBUG_MEMORY
@@ -549,7 +545,7 @@ void process_requests(client *c, int finalize) {
 
     // write response
     bprintf(c->wbuf, c->wlen, "Test Server: received %d lines\n",linecount);
-    if (finalize) bprintf(c->wbuf, c->wlen, "*** Good Bye ***\n",linecount);
+    if (finalize) bprintf(c->wbuf, c->wlen, "*** Good Bye ***\n");
 }
 
 int test_event() {
@@ -631,6 +627,85 @@ int test_event() {
                     break;
                 }
             }
+        }
+    }
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+ssize_t process_requests2(lh_conn *conn) {
+    int linecount=0;
+    int lastpos=-1;
+
+    // find the location of the last newline in the buffer
+    int i;
+    for(i=0; i<conn->rlen; i++) {
+        if (conn->rbuf[i] == 0x0a) {
+            lastpos = i;
+            linecount++; // count lines
+        }
+    }
+
+    // write response
+    bprintf(conn->wbuf, conn->wlen, "Test Server: received %d lines\n",linecount);
+
+    switch(conn->status) {
+    case LH_EVSTATUS_EOF:
+        bprintf(conn->wbuf, conn->wlen, "*** Good Bye ***\n");
+        return -1;
+    case LH_EVSTATUS_ERROR:
+        return -1;
+    }
+
+    return lastpos+1;
+}
+
+int test_event2() {
+    printf("\n\n====== Testing event framework (L3) ======\n");
+    int fail = 0, f;
+
+    int ss = lh_listen_tcp4_any(23456);
+    if (ss<0) {
+        printf("-----\ntotal: %s\n", PASSFAIL(0));
+        return 1;
+    }
+
+    lh_pollarray_create(pa);
+    lh_pollgroup_create(server,&pa);
+    lh_pollgroup_create(clients,&pa);
+
+    lh_poll_add(&server, ss, MODE_R, NULL);
+
+    int stay = 1, i;
+    int maxcount = 100;
+
+    while(stay && maxcount>0) {
+        lh_poll(&pa, 1000);
+        int fd;
+        FILE *fp;
+
+        while ((fd=lh_poll_next_readable(&server,NULL,NULL))>0) {
+            // accept new connection
+            struct sockaddr_in cadr;
+            int cl = lh_accept_tcp4(fd, &cadr);
+            if (cl < 0) break;
+            printf("Accepted from %s:%d\n",
+                   inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
+
+            // create a new lh_conn
+            lh_conn_add(&clients, cl, NULL);
+        }
+
+        lh_conn_process(&clients, process_requests2);
+        int *fds = lh_conn_cleanup(&clients);
+        if (fds) {
+            for(i=0; fds[i]>0; i++) {
+                printf("Removing client fd=%d\n",fds[i]);
+                close(fds[i]);
+                lh_conn_remove(&clients, fds[i]);
+            }
+            free(fds);
         }
     }
     
@@ -864,7 +939,8 @@ int main(int ac, char **av) {
     
     //// lh_net.h
     //// lh_event.h
-    test_event();
+    //test_event();
+    test_event2();
 
 
     //test_compression();
