@@ -227,6 +227,8 @@ int test_arrays() {
     lh_array_delete_range(buf,buflen,100,5);
     TEST_ARRAY("lh_array_delete_element",
                buf,buflen,s-100-101-102-103-104-(700%256)-(500%256)-(300%256));
+
+    free(buf);
     
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -469,6 +471,11 @@ int test_multiarrays() {
     lh_multiarray_delete_range(x.cnt, 3, 2, MAF(x.status), MAF(x.flags), MAF(x.name));
     print_ma(&x);
 
+    free(x.status);
+    free(x.flags);
+    free(x.name);
+    free(x.coord);
+
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -480,8 +487,7 @@ int test_bprintf() {
     printf("\n\n====== Testing bprintf ======\n");
     int fail = 0, f;
 
-    uint8_t * test_ptr = NULL;
-    ssize_t test_len = 0;
+    lh_buffer(test_ptr,test_len);
 
     //lh_array_resize_g(ptr,len,10,256);
 
@@ -506,7 +512,8 @@ int test_bprintf() {
     printf("res=%d len=%zd\n",res,test_len);
     hexdump(test_ptr, test_len);
     
-
+    free(test_ptr);
+    
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
@@ -640,19 +647,19 @@ ssize_t process_requests2(lh_conn *conn) {
 
     // find the location of the last newline in the buffer
     int i;
-    for(i=0; i<conn->rlen; i++) {
-        if (conn->rbuf[i] == 0x0a) {
+    for(i=0; i<conn->r.len; i++) {
+        if (conn->r.ptr[i] == 0x0a) {
             lastpos = i;
             linecount++; // count lines
         }
     }
 
     // write response
-    bprintf(conn->wbuf, conn->wlen, "Test Server: received %d lines\n",linecount);
+    bprintf(conn->w.ptr, conn->w.len, "Test Server: received %d lines\n",linecount);
 
     switch(conn->status) {
     case LH_EVSTATUS_EOF:
-        bprintf(conn->wbuf, conn->wlen, "*** Good Bye ***\n");
+        bprintf(conn->w.ptr, conn->w.len, "*** Good Bye ***\n");
         return -1;
     case LH_EVSTATUS_ERROR:
         return -1;
@@ -680,7 +687,7 @@ int test_event2() {
     int stay = 1, i;
     int maxcount = 100;
 
-    while(stay && maxcount>0) {
+    while(stay && --maxcount>0) {
         lh_poll(&pa, 1000);
         int fd;
         FILE *fp;
@@ -708,7 +715,43 @@ int test_event2() {
             free(fds);
         }
     }
+
+    free(clients.r);
+    free(clients.w);
+    free(clients.e);
     
+    free(server.r);
+    free(server.w);
+    free(server.e);
+    
+    free(pa.poll);
+    free(pa.data);
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+#define TEST_DNS(name, addr) {                       \
+        int f=0;                                     \
+        f = (addr != dns_addr_ipv4(name));           \
+        fail += f;                                   \
+        printf("%s: %s\n", name, PASSFAIL(!f));      \
+    }
+
+int test_dns() {
+    printf("\n\n====== Testing DNS functions ======\n");
+    int fail = 0, f;
+
+    TEST_DNS("0.0.0.0",0x00000000);
+    TEST_DNS("127.0.0.1",0x7f000001);
+    TEST_DNS("224.0.0.1",0xe0000001);
+    TEST_DNS("255.255.255.252",0xfffffffc);
+    TEST_DNS("255.255.255.255",0xffffffff);
+    TEST_DNS("localhost",0x7f000001);
+    TEST_DNS("washuu.no-ip.biz",0x58493c51);
+    TEST_DNS("washuu.homeip.net",0xffffffff);
+    TEST_DNS("slashdot.org",0xd822b52d);
+
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
@@ -851,59 +894,6 @@ void test_image_resize() {
     printf("Exported size : %zd\n",osize);
 }
 
-#include <time.h>
-
-void benchmark_allocation(int narrays, int gran) {
-    srand(time(NULL));
-
-    ALLOCN(uint8_t *,ptr,narrays);
-    ALLOCN(int,cnt,narrays);
-    uint8_t * oldptr;
-
-    int n=0;
-
-    int i,j;
-    for(i=0; i<100000; i++) {
-        for (j=0; j<narrays; j++) {
-            oldptr = ptr[j];
-            int inc = rand()&0xff;
-            ARRAY_ADDG(ptr[j],cnt[j],inc,gran);
-            if (ptr[j] != oldptr) n++;
-        }
-    }
-
-#if 0
-    ARRAY(uint8_t,ptr,cnt);
-    uint8_t *oldptr;
-
-    int i,n=0;
-    for(i=1; i<1000000000; i++) {
-        oldptr = ptr;
-        ARRAY_EXTEND(ptr,cnt,i);
-        if (ptr != oldptr) {
-            printf("%i => %08x\n",i,ptr);
-            n++;
-        }
-    }
-#endif
-
-    printf("Total: %d\n",n);
-}
-
-#define TESTDNS(n) printf("%s => %08x\n",n,dns_addr_ipv4(n))
-
-void test_dns() {
-    TESTDNS("0.0.0.0");
-    TESTDNS("127.0.0.1");
-    TESTDNS("224.0.0.1");
-    TESTDNS("255.255.255.252");
-    TESTDNS("255.255.255.255");
-    TESTDNS("localhost");
-    TESTDNS("washuu.no-ip.biz");
-    TESTDNS("washuu.homeip.net");
-    TESTDNS("slashdot.org");
-}
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -940,7 +930,8 @@ int main(int ac, char **av) {
     //// lh_net.h
     //// lh_event.h
     //test_event();
-    test_event2();
+    //test_event2();
+    //test_dns();
 
 
     //test_compression();
@@ -949,7 +940,6 @@ int main(int ac, char **av) {
 
     //test_server();
 
-    //test_dns();
 
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));

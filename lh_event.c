@@ -258,7 +258,16 @@ int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp) {
     return LH_EVSTATUS_OK;
 }
 
+int lh_poll_read_buf(int fd, lh_buf *buf, ssize_t maxread) {
+    return lh_poll_read(fd, &buf->ptr, &buf->len, maxread);
+}
+
+int lh_poll_write_buf(int fd, lh_buf *buf) {
+    return lh_poll_write_once(fd, buf->ptr, &buf->len);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
+// Layer 3
 
 void lh_conn_add(lh_pollgroup *pg, int fd, void *priv) {
     lh_create_obj(lh_conn, conn);
@@ -274,8 +283,8 @@ void * lh_conn_remove(lh_pollgroup *pg, int fd) {
     if (i<0) return NULL;
 
     lh_conn * conn = (lh_conn *) pa->data[i].priv;
-    if (conn->rbuf) free(conn->rbuf);
-    if (conn->wbuf) free(conn->wbuf);
+    if (conn->r.ptr) free(conn->r.ptr);
+    if (conn->w.ptr) free(conn->w.ptr);
 
     void * priv = conn->priv;
     free(conn);
@@ -293,7 +302,7 @@ void lh_conn_process(lh_pollgroup *pg, lh_handler handler) {
     // process incoming data
     while ((fd=lh_poll_next_readable(pg,NULL,(void **)&conn))>0) {
         int i = lh_poll_find(pg->pa, fd);
-        conn->status = lh_poll_read(fd, &conn->rbuf, &conn->rlen, LH_BUF_MAXREAD);
+        conn->status = lh_poll_read_buf(fd, &conn->r, LH_BUF_MAXREAD);
         ssize_t hres = handler(conn);
         if (hres < 0) {
             // the handler does not wish to receive the data from this
@@ -303,21 +312,21 @@ void lh_conn_process(lh_pollgroup *pg, lh_handler handler) {
             // and shutting down the read direction
             pa->poll[i].events &= ~POLLIN;
             shutdown(fd, SHUT_RD);
-            conn->rlen = 0;
+            conn->r.len = 0;
         }
         else {
             // successful read, delete data consumed by the handler from
             // the rx buffer
 
             if (hres > 0) {
-                assert(hres <= conn->rlen);
-                lh_array_delete_range(conn->rbuf, conn->rlen, 0, hres);
+                assert(hres <= conn->r.len);
+                lh_array_delete_range(conn->r.ptr, conn->r.len, 0, hres);
             }
         }
 
         // if there is data in the write buffer, trigger its transmission
         // by manipulating the POLLOUT flag
-        if (conn->wlen > 0) {
+        if (conn->w.len > 0) {
             if (!(pa->poll[i].events & POLLOUT)) {
                 pa->poll[i].events |= POLLOUT;
                 pa->poll[i].revents |= POLLOUT;
@@ -331,15 +340,15 @@ void lh_conn_process(lh_pollgroup *pg, lh_handler handler) {
     // process outgoing direction
     while ((fd=lh_poll_next_writable(pg,NULL,(void **)&conn))>0) {
         int i = lh_poll_find(pg->pa, fd);
-        if (conn->wlen > 0) {
-            int res = lh_poll_write_once(fd, conn->wbuf, &conn->wlen);
+        if (conn->w.len > 0) {
+            int res = lh_poll_write_buf(fd, &conn->w);
             switch (res) {
             case LH_EVSTATUS_ERROR:
                 // fd is no longer writable, stop checking for writable events
                 pa->poll[i].events &= ~POLLOUT;
                 shutdown(fd, SHUT_WR);
                 // empty the wbuf, so we don't re-trigger writing condition
-                conn->wlen = 0;
+                conn->w.len = 0;
                 break;
             case LH_EVSTATUS_WAIT:
                 // could not write anymore data. Set the writable event,

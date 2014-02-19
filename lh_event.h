@@ -72,6 +72,8 @@ typedef struct lh_polldata {
     lh_clear_obj(name);                         \
     name.pa = (paname);
 
+//TODO: lh_poll{group,array}_destroy
+
 int lh_poll_add(lh_pollgroup *pg, int fd, short mode, void *priv);
 int lh_poll_add_fp(lh_pollgroup *pg, FILE *fp, short mode, void *priv);
 int lh_poll_find(lh_pollarray *pa, int fd);
@@ -109,6 +111,12 @@ int lh_poll_next_error(lh_pollgroup *pg, FILE **fpp, void **privp);
 // unsuccessful read, encountered an error and aborted the operation
 // no more data will be available
 
+typedef struct {
+    uint8_t *ptr;
+    ssize_t len;
+    //TODO: granularity?
+} lh_buf;
+
 /*! \brief Read data from a file descriptor, as much as possible, but
  * not exceeding the buffer size
  * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
@@ -132,6 +140,16 @@ int lh_poll_read_once(int fd, uint8_t *ptr, ssize_t bufsize, ssize_t *len);
  */
 int lh_poll_read(int fd, uint8_t **ptrp, ssize_t *lenp, ssize_t maxread);
 
+/*! \brief Read data into a resizable buffer. Same function as \c lh_poll_read,
+ * just a different interface
+ * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
+ * otherwise the function will block until EOF, error or buffer is full
+ * \param buf Pointer to a resizable buffer object
+ * \param maxread Maximum amount to read, set to <=0 to use default amount
+ * \return Status code - one of the LH_STATUS_* constants
+ */
+int lh_poll_read_buf(int fd, lh_buf *buf, ssize_t maxread);
+
 /*! \brief Write data to a file descriptor, as much as possible. Successfully
  * written data will be removed from the buffer.
  * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
@@ -142,10 +160,16 @@ int lh_poll_read(int fd, uint8_t **ptrp, ssize_t *lenp, ssize_t maxread);
  */
 int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp);
 
+/*! \brief Write data from a resizable buffer. Same function as 
+ * \c lh_poll_write_once just a different interface
+ * \param fd File descriptor, preferable should be set to O_NONBLOCK mode,
+ * otherwise the function will block until EOF, error or buffer is full
+ * \param buf Pointer to a resizable buffer object
+ * \return Status code - one of the LH_STATUS_* constants
+ */
+int lh_poll_read_buf(int fd, lh_buf *buf, ssize_t maxread);
 
-
-#if 0
-
+////////////////////////////////////////////////////////////////////////////////
 
 /*
   This is a retained piece of documentation from a previous version
@@ -196,8 +220,6 @@ int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp);
 
 */
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LH_BUF_GRAN
@@ -209,13 +231,11 @@ int lh_poll_write_once(int fd, uint8_t *ptr, ssize_t *lenp);
 #endif
 
 typedef struct {
-    int fd;
-    int status;
-    uint8_t * rbuf;
-    ssize_t   rlen;
-    uint8_t * wbuf;
-    ssize_t   wlen;
-    void    * priv;
+    int     fd;
+    int     status;
+    lh_buf  r;
+    lh_buf  w;
+    void  * priv;
 } lh_conn;
 
 // return value : how much of the rx data has been consumed?
