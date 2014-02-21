@@ -19,10 +19,11 @@
 #include "lh_buffers.h"
 #include "lh_bytes.h"
 #include "lh_net.h"
+#include "lh_files.h"
 #include "lh_event.h"
+#include "lh_dir.h"
 
 #if 0
-#include "lh_files.h"
 #include "lh_compress.h"
 #include "lh_image.h"
 
@@ -932,6 +933,8 @@ int main(int ac, char **av) {
     //test_event();
     //test_event2();
     //test_dns();
+
+    lh_dirwalk_test(av[1]?av[1]:".");
 
 
     //test_compression();

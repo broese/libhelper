@@ -65,6 +65,9 @@ via exit(1).
     fprintf(stderr, "%s:%d (%s) : " msg "\n",           \
             __FILE__,__LINE__,__func__,##__VA_ARGS__);
 
+#define LH_HERE                                                     \
+    fprintf(stderr, "%s:%d (%s)\n", __FILE__,__LINE__,__func__);
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void hexdump(const unsigned char * data, ssize_t length);

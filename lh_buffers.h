@@ -164,6 +164,19 @@
 #define lh_array_add_g(ptr,cnt,num,gran)            \
     lh_array_resize_g(ptr,cnt,((cnt)+(num)),gran)
 
+/*! \brief Add a single new element to the expandable array and return
+ * a pointer to it. This macro serves as a statement.
+ * \param ptr Name of the pointer variable
+ * \param cnt Name of the counter variable
+ * \param gran Granularity of allocation, must be power of 2
+ * \return Pointer to the new element
+ */
+#define lh_array_new_g(ptr,cnt,gran) ( {            \
+            lh_array_add_g(ptr,cnt,1,gran);         \
+            ptr+cnt-1;                              \
+        } )
+    
+
 /*! \brief Ensure that the array allocation matches specific granularity
  * The array is resized if necessary and the remaining elements zeroed
  * \param ptr Name of the pointer variable
@@ -183,6 +196,9 @@
 
 /*! \brief Add elements to array (non-granular version) */
 #define lh_array_add(ptr,cnt,num)       lh_array_add_g(ptr,cnt,num,1)
+
+/*! \brief Add a single element to array (non-granular version) */
+#define lh_array_new(ptr,cnt)           lh_array_new_g(ptr,cnt,1)
 
 
 /*! \brief Delete a number of elements starting from a given position

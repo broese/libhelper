@@ -7,7 +7,7 @@ CONFIG=-include config.h
 AR=ar
 
 #LIBOBJ=lh_image.o
-LIBOBJ=lh_debug.o lh_files.o lh_compress.o lh_net.o lh_event.o
+LIBOBJ=lh_debug.o lh_files.o lh_compress.o lh_net.o lh_event.o lh_dir.o
 
 all: test libhelper.a
 
@@ -20,7 +20,7 @@ test: main.o $(LIBOBJ)
 .c.o:
 	$(CC) $(CFLAGS) $(DEFS) $(CONFIG) -o $@ -c $<
 
-main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h config.h
+main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h lh_event.h lh_dir.h config.h
 
 clean:
 	rm -f *.o *~
