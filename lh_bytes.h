@@ -352,6 +352,48 @@ static inline double lh_bswap_double(double v) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdarg.h>
+
+#define UNPACK(name,type)                        \
+    { lh_lread_##name(ptr,lim,var,fail++;break); \
+        *(va_arg(args,type *)) = var; break; }
+
+static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...) {
+    va_list args;
+    va_start(args,fmt);
+
+    int fail = 0;
+    uint8_t * start = ptr;
+
+    for(;fmt[0];fmt++) {
+        switch(fmt[0]) {
+        case 'c': 
+        case 'C': UNPACK(char_be,uint8_t);
+        case 's': UNPACK(short_le,uint16_t);
+        case 'S': UNPACK(short_be,uint16_t);
+        case 'i': UNPACK(int_le,uint32_t);
+        case 'I': UNPACK(int_be,uint32_t);
+        case 'l': UNPACK(long_le,uint64_t);
+        case 'L': UNPACK(long_be,uint64_t);
+        case 'f': UNPACK(float_le,float);
+        case 'F': UNPACK(float_be,float);
+        case 'd': UNPACK(double_le,double);
+        case 'D': UNPACK(double_be,double);
+        default: fail = 1; break;
+        }
+        if (fail) break;
+    }
+
+    va_end(args);
+
+    if (fail)
+        return -1;
+    else
+        return ptr-start;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LH_DECLARE_SHORT_NAMES
 
 #define bswap_short(v)                  lh_bswap_short(v)

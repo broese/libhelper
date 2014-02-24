@@ -369,6 +369,36 @@ int test_stream() {
     return fail;
 }
 
+typedef struct {
+    short x,y,z;
+    float speed;
+    uint64_t  cat;
+} test_t;
+
+int test_unpack() {
+    printf("\n\n====== Testing unpack ======\n");
+    int fail = 0, f;
+
+    uint8_t buf[64] = { 
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+        0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
+    };
+
+    test_t u;
+
+    ssize_t sz = lh_unpack(buf,buf+sizeof(buf),"SSSfl",&u.x,&u.y,&u.z,&u.speed,&u.cat);
+    printf("sz=%zd coord=%d,%d,%d speed=%.3f cat=%016lx\n",sz,u.x,u.y,u.z,u.speed,u.cat);
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
 #define TEST_WSTREAM(func, buf1, buf2, len) {        \
         int f=0;                                     \
         f = (memcmp(buf1, buf2, len) != 0);          \
@@ -923,7 +953,10 @@ int main(int ac, char **av) {
     fail += test_bswap();
     fail += test_stream();
     fail += test_wstream();
+    */
+    fail += test_unpack();
 
+    /*
     //// lh_files.h
     //fail += test_files();
     */
@@ -934,7 +967,7 @@ int main(int ac, char **av) {
     //test_event2();
     //test_dns();
 
-    lh_dirwalk_test(av[1]?av[1]:".");
+    //lh_dirwalk_test(av[1]?av[1]:".");
 
 
     //test_compression();
