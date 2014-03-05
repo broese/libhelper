@@ -115,67 +115,43 @@
  */
 #define lh_resize(ptr, num) ptr = realloc(ptr, num*sizeof(*ptr));
 
-/*! \brief Declare an expandable array. Variables are initialized but
- * no memory is llocated
- * \param type Type of elements in the array
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
+/*! \brief Move elements in the allocated array. Does not check for boundaries
+ * Does not zero elements. Source and destination ranges may overlap
+ * \param ptr Pointer to allocated memory
+ * \param from Index to move from
+ * \param to Index to move to
+Ü* \param num Number of elements to move
  */
-#define lh_array(type,ptr,cnt) type * ptr=NULL; ssize_t cnt=0;
+#define lh_move(ptr, from, to, num) \
+    memmove(ptr+to, ptr+from, num*sizeof(*ptr));
 
-/*! \brief Declare and expandable buffer (elements are of type uint8_t).
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- */
-#define lh_buffer(ptr,cnt)              lh_array(uint8_t,ptr,cnt)
 
-/*! \brief Allocate memory for a given number of elements in an expandable array
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param num Number of elements to be allocated for
- * \param gran Granularity of allocation
+/*! \brief Declare a resizable array that adheres to the naming scheme
+ * \param type Type of the elements
+ * \param name Base name of the array - to be used in the subsequent methods
  */
-#define lh_array_allocate_g(ptr,cnt,num,gran) {                         \
-        lh_alloc_num(ptr,lh_align(num,gran));                           \
-        cnt=num;                                                        \
-    }
+#define lh_declare_array(type,name)          \
+    type * name ## _ptr;                     \
+    size_t name ## _cnt;                     
 
-/*! \brief Resize an expandable array to a new number of elements.
- * Old elements are copied, new elements are zeroed.
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param num Number of elements to be allocated for
- * \param gran Granularity of allocation, must be power of 2
- */
-#define lh_array_resize_g(ptr,cnt,num,gran) {                           \
-        if (lh_align((num),(gran)) > lh_align((cnt),(gran))) {          \
-            lh_resize((ptr),lh_align((num),(gran)));                    \
-            lh_clear_range((ptr), (cnt), (lh_align((num),gran))-(cnt)); \
-        }                                                               \
-        cnt=num;                                                        \
-    }
+#define lh_declare_buffer(name)                 \
+    uint8_t * name ## _ptr;                     \
+    size_t name ## _cnt;                     
 
-/*! \brief Resize an expandable array by adding a number of elements
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param num Number of elements to be added
- * \param gran Granularity of allocation, must be power of 2
- */
-#define lh_array_add_g(ptr,cnt,num,gran)            \
-    lh_array_resize_g(ptr,cnt,((cnt)+(num)),gran)
+#define lh_declare_array_i(type,name)          \
+    type * name ## _ptr = NULL;                \
+    size_t name ## _cnt = 0;                     
 
-/*! \brief Add a single new element to the expandable array and return
- * a pointer to it. This macro serves as a statement.
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param gran Granularity of allocation, must be power of 2
- * \return Pointer to the new element
+#define lh_declare_buffer_i(name)                 \
+    uint8_t * name ## _ptr = NULL;                \
+    size_t name ## _cnt = 0;                     
+
+/*! \brief Initialize a resizable array
+ * \param name Base name of the array
  */
-#define lh_array_new_g(ptr,cnt,gran) ( {            \
-            lh_array_add_g(ptr,cnt,1,gran);         \
-            ptr+cnt-1;                              \
-        } )
-    
+#define lh_arr_init(name) \
+    name ## _ptr = NULL;  \
+    name ## _cnt = 0;
 
 /*! \brief Ensure that the array allocation matches specific granularity
  * The array is resized if necessary and the remaining elements zeroed
@@ -183,65 +159,161 @@
  * \param cnt Name of the counter variable
  * \param gran Granularity of allocation, must be power of 2
  */
-#define lh_array_setgran(ptr, cnt, gran) {                              \
-        lh_resize((ptr),lh_align((cnt),(gran)));                        \
-        lh_clear_range((ptr), (cnt), (lh_align((cnt),gran))-(cnt));     \
+#define lh_arr_setgran(name, gran)              \
+    lh_arr_resize(name,gran)
+
+#define lh_arr_setgran_c(name, gran)            \
+    lh_arr_resize_c(name,gran)
+
+////////////////////////////////////////////////////////////////////////////////
+// Allocate
+
+#define lh_arr_allocate_g(ptr,cnt,num,gran,...) {   \
+        lh_alloc_num(ptr, lh_align(num,gran));      \
+        cnt = num;                                  \
     }
 
-/*! \brief Allocate array (non-granular version) */
-#define lh_array_allocate(ptr,cnt,num)  lh_array_allocate_g(ptr,cnt,num,1)
+#define lh_arr_allocate_gc(ptr,cnt,num,gran,...) {  \
+        lh_alloc_num(ptr, lh_align(num,gran));      \
+        lh_clear_num((ptr),(num));                  \
+        cnt = num;                                  \
+    }
 
-/*! \brief Resize array (non-granular version) */
-#define lh_array_resize(ptr,cnt,num)    lh_array_resize_g(ptr,cnt,num,1)
+/*! \brief Allocate a resizable array to hold a given number of elements
+ * \param name Base name of the array
+ * \param num Number of elements
+ * \param ... Optional allocation granularity
+ */
+#define lh_arr_allocate(name,num,...)                               \
+    lh_arr_allocate_g(name##_ptr,name##_cnt,num,##__VA_ARGS__,1)
 
-/*! \brief Add elements to array (non-granular version) */
-#define lh_array_add(ptr,cnt,num)       lh_array_add_g(ptr,cnt,num,1)
+#define lh_arr_allocate_c(name,num,...) {                           \
+    lh_arr_allocate_gc(name##_ptr,name##_cnt,num,##__VA_ARGS__,1)
+    
+////////////////////////////////////////////////////////////////////////////////
 
-/*! \brief Add a single element to array (non-granular version) */
-#define lh_array_new(ptr,cnt)           lh_array_new_g(ptr,cnt,1)
+#define lh_arr_resize_g(ptr,cnt,num,gran,...) {                         \
+        if (lh_align((num),(gran)) > lh_align((cnt),(gran))) {          \
+            lh_resize((ptr),lh_align((num),(gran)));                    \
+        }                                                               \
+        cnt=num;                                                        \
+    }
 
+#define lh_arr_resize_gc(ptr,cnt,num,gran,...) {                        \
+        if (lh_align((num),(gran)) > lh_align((cnt),(gran))) {          \
+            lh_resize((ptr),lh_align((num),(gran)));                    \
+            if ( (lh_align((num),gran)) > (cnt) )                       \
+                lh_clear_range((ptr), (cnt), (lh_align((num),gran))-(cnt)); \
+        }                                                               \
+        cnt=num;                                                        \
+    }
+
+
+/*! \brief Resize a resizable array to hold a given number of elements
+ * \param name Base name of the array
+ * \param num Number of elements
+ * \param ... Optional allocation granularity
+ */
+#define lh_arr_resize(name,num,...)                             \
+    lh_arr_resize_g(name##_ptr,name##_cnt,num,##__VA_ARGS__,1)
+
+#define lh_arr_resize_c(name,num,...)                           \
+    lh_arr_resize_g(name##_ptr,name##_cnt,num,##__VA_ARGS__,1)
+
+////////////////////////////////////////////////////////////////////////////////
+
+/*! \brief Add a number of elements to a resizable array
+ * \param name Base name of the array
+ * \param num Number of elements
+ * \param ... Optional allocation granularity
+ */
+#define lh_arr_add(name,num,...)                                \
+    lh_arr_resize(name,((num)+(name##_cnt)),##__VA_ARGS__)
+
+#define lh_arr_add_c(name,num,...)                              \
+    lh_arr_resize_c(name,((num)+(name##_cnt)),##__VA_ARGS__)
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define lh_arr_new_g(ptr,cnt,gran,...) ({           \
+            lh_arr_resize_g(ptr,cnt,cnt+1,gran);    \
+            ptr+cnt-1;                              \
+        })
+
+#define lh_arr_new_gc(ptr,cnt,gran,...) ({          \
+            lh_arr_resize_g(ptr,cnt,cnt+1,gran);    \
+            lh_clear_ptr(ptr+cnt-1);                \
+            ptr+cnt-1;                              \
+        })
+
+/*! \brief Resize the array to accomodate 1 new element at the end
+ * and return an lvalue to it. A value can be so directly assigned
+ * \param name Base name of the array
+ * \param ... Optional allocation granularity
+ */
+#define lh_arr_new(name,...)                                \
+    *(lh_arr_new_g(name##_ptr,name##_cnt,##__VA_ARGS__,1))
+
+#define lh_arr_new_c(name,...)                              \
+    *(lh_arr_new_gc(name##_ptr,name##_cnt,##__VA_ARGS__,1))
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define lh_arr_insert_g(ptr,cnt,idx,gran,...) ({    \
+            lh_arr_resize_g(ptr,cnt,cnt+1,gran);    \
+            lh_move(ptr,idx,idx+1,(cnt)-(idx));     \
+            ptr+idx;                                \
+        })
+
+#define lh_arr_insert_gc(ptr,cnt,idx,gran,...) ({   \
+            lh_arr_resize_g(ptr,cnt,cnt+1,gran);    \
+            lh_move(ptr,idx,idx+1,(cnt)-(idx));     \
+            lh_clear_ptr(ptr+idx);                  \
+            ptr+idx;                                \
+        })
+
+/*! \brief Resize the array to accomodate 1 new element at the specified index and
+ * return an lvalue to it. Elements afetr the position are moved to make space 
+ * \param name Base name of the array
+ * \param idx Index at which the new element should be inserted
+ * \param ... Optional allocation granularity
+ */
+#define lh_arr_insert(name,idx,...)                             \
+    *(lh_arr_insert_g(name##_ptr,name##_cnt,idx,##__VA_ARGS__,1))
+
+#define lh_arr_insert_c(name,idx,...)                           \
+    *(lh_arr_insert_gc(name##_ptr,name##_cnt,idx,##__VA_ARGS__,1))
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define lh_arr_delete_range_nu(ptr,cnt,from,num)    \
+    lh_move(ptr,from+num,from,cnt-num-from);
+
+#define lh_arr_delete_range_nu_c(ptr,cnt,from,num) {    \
+        lh_move(ptr,from+num,from,cnt-num-from);        \
+        lh_clear_range(ptr,(cnt)-(num),num);            \
+    }
 
 /*! \brief Delete a number of elements starting from a given position
- * Elements past the deleted range are moved to close the gap
- * The free space at the end is zeroed
- * The array is not resized
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param from Index of the first element to delete
+ * Elements past the deleted range are moved to close the gap.
+ * The array is resized but not reallocated
+ * \param name Base name of the array
+ * \param from First element index to delete
  * \param num Number of elements to delete
  */
-#define lh_array_delete_range_nu(ptr, cnt, from, num) {                 \
-        memmove((ptr)+(from), (ptr)+(from)+(num),                       \
-                ((cnt)-(num)-(from))*sizeof(*ptr));                     \
-        lh_clear_range(ptr,(cnt)-(num),num);                            \
-    }                                                                   
-
-/*! \brief Delete a single element at given position, but do not resize the array
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param idx Index of the element to delete
- */
-#define lh_array_delete_element_nu(ptr, cnt, idx)   \
-    lh_array_delete_range_nu(ptr, cnt, idx, 1)
-
-/*! \brief Delete range of elements and update cnt to resize the array
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param from Index of the first element to delete
- * \param num Number of elements to delete
- */
-#define lh_array_delete_range(ptr, cnt, from, num) {                    \
-        lh_array_delete_range_nu(ptr, cnt, from, num);                  \
-        cnt -= num;                                                     \
+#define lh_arr_delete_range(name,from,num) {                    \
+        lh_arr_delete_range_nu(name##_ptr,name##_cnt,from,num); \
+        name##_cnt -= num;                                             \
     }
 
-/*! \brief Delete a single element and update cnt to resize the array
- * \param ptr Name of the pointer variable
- * \param cnt Name of the counter variable
- * \param idx Index of the element to delete
+/*! \brief Delete one element at given position
+ * Elements past the deleted one are moved to close the gap
+ * The array is resized but not reallocated
+ * \param name Base name of the array
+ * \param idx Element index to delete
  */
-#define lh_array_delete_element(ptr, cnt, idx)  \
-    lh_array_delete_range(ptr, cnt, idx, 1)
+#define lh_arr_delete(name,idx)              \
+    lh_arr_delete_range(name,idx,1)
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -367,7 +439,7 @@ static inline void lh_multiarray_delete_internal(int *cnt, int from, int num, ..
         uint8_t **ptrp = va_arg(fields, uint8_t **);
         if (!ptrp) break;
         ssize_t so  = va_arg(fields, ssize_t);
-        lh_array_delete_range_nu(*ptrp, *cnt*so, from*so, num*so);
+        lh_arr_delete_range_nu(*ptrp, *cnt*so, from*so, num*so);
     } while (1);
     va_end( fields );
     *cnt -= num;
@@ -407,7 +479,7 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
     }
     else {
         // otherwise ensure granularity
-        lh_array_setgran(*bufp, *lenp, gran);
+        //lh_arr_setgran(*bufp, *lenp, gran);
     }
 
     uint8_t *pos = *bufp+*lenp;
@@ -437,8 +509,6 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
     return plen;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LH_DECLARE_SHORT_NAMES
@@ -459,34 +529,38 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
 #define ALLOCB                          lh_alloc_buf
 
 #define RESIZE                          lh_resize
-#define ARRAY                           lh_array
-#define BUFFER                          lh_buffer
+#define MOVE                            lh_move
 
-#define ARRAY_ALLOCG                    lh_array_allocate_g
-#define ARRAY_RESIZEG                   lh_array_resize_g
-#define ARRAY_ADDG                      lh_array_resize_g
+#define declare_arr                     lh_declare_array
+#define declare_arr_i                   lh_declare_array_i
+#define declare_buf                     lh_declare_buffer
+#define declare_buf_i                   lh_declare_buffer_i
 
-#define ARRAY_ALLOC                     lh_array_allocate
-#define ARRAY_RESIZE                    lh_array_resize
-#define ARRAY_ADD                       lh_array_resize
+#define arr_init                        lh_arr_init
+#define arr_setgran                     lh_arr_setgran
 
-#define ARRAY_DELETE_RANGE              lh_array_delete_range
-#define ARRAY_DELETE                    lh_array_delete_element
-#define ARRAY_DELETE_RANGE_NU           lh_array_delete_range_nu
-#define ARRAY_DELETE_NU                 lh_array_delete_element_nu
+#define arr_alloc                       lh_arr_allocate
+#define arr_alloc_c                     lh_arr_allocate_c
+#define arr_resize                      lh_arr_resize
+#define arr_resize_c                    lh_arr_resize_c
+#define arr_add                         lh_arr_add
+#define arr_add_c                       lh_arr_add_c
+#define arr_new                         lh_arr_new
+#define arr_new_c                       lh_arr_new_c
+#define arr_insert                      lh_arr_insert
+#define arr_insert_c                    lh_arr_insert_c
+#define arr_delrange                    lh_arr_delete_range
+#define arr_delete                      lh_arr_delete
 
-#define MARR_ALLOCG                     lh_multiarray_allocate_g
-#define MARR_RESIZEG                    lh_multiarray_resize_g
-#define MARR_ADDG                       lh_multiarray_add_g
-
-#define MARR_ALLOC                      lh_multiarray_allocate
-#define MARR_RESIZE                     lh_multiarray_resize
-#define MARR_ADD                        lh_multiarray_add
-
-#define MARR_DELETE                     lh_multiarray_delete
-#define MARR_DELETE_RANGE               lh_multiarray_delete_range
+#define marr_alloc                      lh_multiarray_allocate
+#define marr_alloc_g                    lh_multiarray_allocate_g
+#define marr_resize                     lh_multiarray_resize
+#define marr_resize_g                   lh_multiarray_resize_g
+#define marr_add                        lh_multiarray_add
+#define marr_add_g                      lh_multiarray_add_g
+#define marr_delrange                   lh_multiarray_delete_range
+#define marr_delete                     lh_multiarray_delete
 
 #define bprintf(buf,len,fmt,...)        lh_bufprintf_g(&buf, &len, LH_BUFPRINTF_GRAN, fmt, ##__VA_ARGS__)
 
 #endif
-

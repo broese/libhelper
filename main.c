@@ -192,12 +192,12 @@ int test_alloc() {
     return fail;
 }
 
-#define TEST_ARRAY(name,ptr,cnt,check) {                \
-        int sum=0,i,f=0;                                \
-        for(i=0; i<cnt; i++) sum += (int)ptr[i];        \
-        f = (sum != (check));                           \
-        fail += f;                                      \
-        printf("%s: %s\n", name, PASSFAIL(!f));         \
+#define TEST_ARRAY(title,name,check) {                          \
+        int sum=0,i,f=0;                                        \
+        for(i=0; i<name##_cnt; i++) sum += (int)name##_ptr[i];  \
+        f = (sum != (check));                                   \
+        fail += f;                                              \
+        printf("%s: %s\n", title, PASSFAIL(!f));                 \
     }
         
 
@@ -207,35 +207,45 @@ int test_arrays() {
 
     int i,s;
 
-    lh_buffer(buf,buflen);
-    lh_array_allocate_g(buf,buflen,200,16);
-    for(i=0; i<buflen; i++) buf[i] = (uint8_t)i;
-    TEST_ARRAY("lh_array_allocate_g",buf,buflen,199*buflen/2);
+    lh_declare_buffer_i(buf);
+    lh_arr_allocate(buf,200,16);
+    for(i=0; i<buf_cnt; i++) buf_ptr[i] = (uint8_t)i;
+    TEST_ARRAY("lh_arr_allocate",buf,199*buf_cnt/2);
 
     for(i=200; i<1000; i++) {
-        lh_array_resize_g(buf,buflen,i+1,16);
-        buf[i] = (uint8_t)i;
+        lh_arr_resize(buf,i+1,16);
+        buf_ptr[i] = (uint8_t)i;
     }
     for(i=0,s=0; i<1000; i++) s+=(uint8_t)i;
-    TEST_ARRAY("lh_array_add_g",buf,buflen,sum);
+    TEST_ARRAY("lh_arr_add",buf,s);
 
-    lh_array_delete_element(buf,buflen,700);
-    lh_array_delete_element(buf,buflen,500);
-    lh_array_delete_element(buf,buflen,300);
-    TEST_ARRAY("lh_array_delete_element",
-               buf,buflen,s-(700%256)-(500%256)-(300%256));
+    lh_arr_new(buf) = 0x55;
+    s+=0x55;
+    TEST_ARRAY("lh_arr_new",buf,s);
 
-    lh_array_delete_range(buf,buflen,100,5);
-    TEST_ARRAY("lh_array_delete_element",
-               buf,buflen,s-100-101-102-103-104-(700%256)-(500%256)-(300%256));
+    lh_arr_insert(buf,900) = 0xAA;
+    s+=0xAA;
+    TEST_ARRAY("lh_arr_insert",buf,s);
 
-    free(buf);
+    lh_arr_delete(buf,700);
+    lh_arr_delete(buf,500);
+    lh_arr_delete(buf,300);
+    s -= (700%256)+(500%256)+(300%256);
+    TEST_ARRAY("lh_array_delete",buf,s);
+
+    lh_arr_delete_range(buf,100,5);
+    s -= 100+101+102+103+104;
+    TEST_ARRAY("lh_array_delete_range", buf,s);
+
+    free(buf_ptr);
     
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+#if 0
 
 #define TEST_BSWAP(func,a,b) {                      \
         int f=0;                                    \
@@ -788,144 +798,8 @@ int test_dns() {
 }
 
 
-
-
-
-
-
-
-
-#if 0
-////////////////////////////////////////////////////////////////////////////////
-
-
-#if 0
-#define TEST_SORTF(a,b) { char A=a, B=b; printf("A=%d B=%d SORTF=%d\n",a,b,SORTF_SI(&A,&B,(void *)0x01000000)); }
-
-    TEST_SORTF(2,3);
-    TEST_SORTF(2,2);
-    TEST_SORTF(2,1);
 #endif
 
-
-#if __linux
-    printf("-------------------\n");
-    char *cstr = "ABQRSTUJKLVWFGCDEMNOPHIXYZ";
-    ARRAY(char,ss,len);
-    ARRAY_ALLOCG(ss,len,26,16);
-
-    memcpy(ss,cstr,26);
-    printf("ss=%8p len=%d >%s<\n",ss,len,ss);
-    hexdump(ss, 32);
-
-    SORTD(ss,26,*ss);
-    printf("ss=%8p len=%d >%s<\n",ss,len,ss);
-    hexdump(ss, 32);
-
-#endif
-
-
-void test_files() {
-    off_t size;
-    FILE *m = open_file_r("Makefile",&size);
-    unsigned char * data = read_fp_at(m,34,55);
-    hexdump(data+3, 55);
-    free(data);
-}
-
-void test_compression() {
-
-#if 0
-    ssize_t ilen;
-    char * idata = 
-        "This is a test string to be compressed. "
-        "We will try compression methods gzip and zlib and store the output to a file, "
-        "then load the data again and try to decode it.";
-    ilen = strlen(idata)+1;
-#else
-    ssize_t ilen;
-    char * idata = read_file_whole("test.txt", &ilen);
-#endif
-    
-
-    
-    ssize_t olen;
-    unsigned char * comp = gzip_encode(idata, ilen, &olen);
-    if (!comp) {
-        printf("test_compression failed\n");
-        exit(1);
-    }
-
-    printf("Compressed idata to %zd bytes\n",olen);
-
-    hexdump(comp,olen);
-    write_file("compressed.gz", comp, olen);
-
-    ssize_t dlen;
-    unsigned char * plain = gzip_decode(comp, olen, &dlen);
-    if (!plain) {
-        printf("test_decompression failed\n");
-        exit(1);
-    }
-
-    printf("Decompressed to %zd bytes\n",dlen);
-    hexdump(plain,dlen);
-
-
-    free(comp);
-}
-
-void test_compression2() {
-    ssize_t gsize;
-    unsigned char * gzip = read_file_whole("test.gz",&gsize);
-    hexdump(gzip,gsize);
-
-    ssize_t psize;
-    unsigned char * plain = zlib_decode(gzip, gsize, &psize);
-    if (!plain) {
-        printf("test_decompression failed\n");
-        exit(1);
-    }
-    printf("Decompressed to %zd bytes\n",psize);
-    hexdump(plain,psize);
-
-    free(gzip);
-}
-
-void test_image() {
-    lhimage *img = allocate_image(80,80);
-    int i;
-    for(i=0; i<img->height*img->width; i++)
-        img->data[i] = 0x00ffff00;
-
-    ssize_t osize = export_png_file(img, "test.png");
-    printf("Exported size : %zd\n",osize);
-}
-
-void test_image2() {
-    lhimage *img = import_png_file("input.png");
-    printf("Imported a %dx%d image\n",img->width,img->height);
-
-    int i;
-    for(i=0; i<img->height*img->width; i++)
-        img->data[i] ^= 0x00ffffff;
-
-    ssize_t osize = export_png_file(img, "output.png");
-    printf("Exported size : %zd\n",osize);
-}
-
-void test_image_resize() {
-    lhimage *img = import_png_file("photo.png");
-    printf("Imported a %dx%d image\n",img->width,img->height);
-    int i;
-    for(i=0; i<100; i++) {
-        resize_image(img,img->width+50,img->height+50,20,20,0x00ff00ff);
-    }
-    ssize_t osize = export_png_file(img, "photo_resized.png");
-    printf("Exported size : %zd\n",osize);
-}
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -938,23 +812,21 @@ int main(int ac, char **av) {
 
     int fail = 0;
 
-    /*
     //// lh_buffers.h
     fail += test_align();
     fail += test_clear();
     fail += test_alloc();
     fail += test_arrays();
-    fail += test_multiarrays();
-    fail += test_bprintf();
-    */
+    //fail += test_multiarrays();
+    //fail += test_bprintf();
 
     /*
     //// lh_bytes.h
     fail += test_bswap();
     fail += test_stream();
     fail += test_wstream();
-    */
     fail += test_unpack();
+    */
 
     /*
     //// lh_files.h

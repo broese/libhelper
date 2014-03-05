@@ -23,17 +23,15 @@
 #define MODE_W  POLLOUT
 #define MODE_RW (POLLIN|POLLOUT)
 
-typedef struct lh_polldata lh_polldata;
-
 /*! \brief This struct carries two arrays - \c poll and \c data. \c poll is
  * directly passed to poll(), while \c data carries all auxiliary data to the
  * file descriptors, since it cannot be stored in the <tt>struct pollfd</tt>.
  * Both arrays have the same length, stored in \c num
  */
 typedef struct {
-    int                 nfd;    // number of registered file descriptors
-    struct pollfd     * poll;   // pollfd array - directly passed to poll()
-    lh_polldata       * data;   // associated data
+    int                         nfd;    // number of registered file descriptors
+    struct pollfd             * poll;   // pollfd array - directly passed to poll()
+    struct lh_polldata        * data;   // associated data
 } lh_pollarray;
 
 typedef struct {

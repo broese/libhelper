@@ -1,7 +1,12 @@
 #pragma once
 
+#include <limits.h>
 #include <dirent.h>
 #include <sys/stat.h>
+
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif
 
 #include "lh_buffers.h"
 #include "lh_debug.h"
