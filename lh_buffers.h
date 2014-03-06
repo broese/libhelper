@@ -159,11 +159,19 @@
  * \param cnt Name of the counter variable
  * \param gran Granularity of allocation, must be power of 2
  */
-#define lh_arr_setgran(name, gran)              \
-    lh_arr_resize(name,gran)
+#define lh_arr_setgran_ptr(ptr,cnt,gran)                    \
+    lh_resize((ptr),lh_align((cnt),(gran)))
 
-#define lh_arr_setgran_c(name, gran)            \
-    lh_arr_resize_c(name,gran)
+#define lh_arr_setgran_ptr_c(ptr,cnt,gran) {                \
+        lh_arr_setgran_ptr(ptr,cnt,gran);                   \
+        lh_clear_range(ptr,cnt,lh_align((cnt),(gran))-cnt); \
+    }
+
+#define lh_arr_setgran(name,gran)                           \
+    lh_arr_setgran_ptr(name##_ptr,name##_cnt,gran);
+
+#define lh_arr_setgran_c(name,gran)                         \
+    lh_arr_setgran_ptr_c(name##_ptr,name##_cnt,gran);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Allocate
@@ -479,7 +487,7 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
     }
     else {
         // otherwise ensure granularity
-        //lh_arr_setgran(*bufp, *lenp, gran);
+        lh_arr_setgran_ptr(*bufp, *lenp, gran);
     }
 
     uint8_t *pos = *bufp+*lenp;
@@ -509,6 +517,9 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
     return plen;
 }
 
+#define lh_bufprintf(name,fmt,...)               \
+    lh_bufprintf_g(&name##_ptr,&name##_cnt,LH_BUFPRINTF_GRAN,fmt,##__VA_ARGS__)
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LH_DECLARE_SHORT_NAMES
@@ -537,7 +548,8 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
 #define declare_buf_i                   lh_declare_buffer_i
 
 #define arr_init                        lh_arr_init
-#define arr_setgran                     lh_arr_setgran
+#define setgran                         lh_arr_setgran
+#define setgran_ptr                     lh_arr_setgran_ptr
 
 #define arr_alloc                       lh_arr_allocate
 #define arr_alloc_c                     lh_arr_allocate_c
@@ -561,6 +573,6 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
 #define marr_delrange                   lh_multiarray_delete_range
 #define marr_delete                     lh_multiarray_delete
 
-#define bprintf(buf,len,fmt,...)        lh_bufprintf_g(&buf, &len, LH_BUFPRINTF_GRAN, fmt, ##__VA_ARGS__)
+#define bprintf                         lh_bufprintf
 
 #endif

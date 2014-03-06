@@ -245,8 +245,6 @@ int test_arrays() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-
 #define TEST_BSWAP(func,a,b) {                      \
         int f=0;                                    \
         f = ( func(a) != b );                       \
@@ -481,7 +479,7 @@ int print_ma(ma *x) {
     printf("cnt:%d status:%p flags:%p name:%p\n",
            x->cnt,x->status,x->flags,x->name);
     for(i=0; i<x->cnt; i++) {
-        printf("%2d  %c %04x %s\n",i,x->status[i],x->flags[i],x->name[i]);
+        printf("%2d  %c %04x %s\n",i,x->status[i],x->flags[i],x->name[i]?x->name[i]:"<undef>");
     }
 
     return 0;
@@ -528,30 +526,30 @@ int test_bprintf() {
     printf("\n\n====== Testing bprintf ======\n");
     int fail = 0, f;
 
-    lh_buffer(test_ptr,test_len);
+    lh_declare_buffer_i(test);
 
     //lh_array_resize_g(ptr,len,10,256);
 
     int res;
-    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_len);
-    hexdump(test_ptr, test_len);
-    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_len);
-    hexdump(test_ptr, test_len);
-    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_len);
-    hexdump(test_ptr, test_len);
+    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_cnt);
+    hexdump(test_ptr, test_cnt);
+    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_cnt);
+    hexdump(test_ptr, test_cnt);
+    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_cnt);
+    hexdump(test_ptr, test_cnt);
 
-    test_len = LH_BUFPRINTF_GRAN;
-    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_len);
-    hexdump(test_ptr, test_len);
+    test_cnt = LH_BUFPRINTF_GRAN;
+    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_cnt);
+    hexdump(test_ptr, test_cnt);
 
-    test_len = 512;
-    res = bprintf(test_ptr,test_len,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_len,__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_len);
-    hexdump(test_ptr, test_len);
+    test_cnt = 512;
+    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,test_cnt);
+    hexdump(test_ptr, test_cnt);
     
     free(test_ptr);
     
@@ -560,7 +558,7 @@ int test_bprintf() {
 }
 
 
-
+#if 0
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
@@ -817,16 +815,16 @@ int main(int ac, char **av) {
     fail += test_clear();
     fail += test_alloc();
     fail += test_arrays();
-    //fail += test_multiarrays();
-    //fail += test_bprintf();
+    fail += test_multiarrays();
+    fail += test_bprintf();
 
-    /*
+    
     //// lh_bytes.h
     fail += test_bswap();
     fail += test_stream();
     fail += test_wstream();
     fail += test_unpack();
-    */
+    
 
     /*
     //// lh_files.h
