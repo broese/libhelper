@@ -18,17 +18,14 @@
 
 #include "lh_buffers.h"
 #include "lh_bytes.h"
+
+#if 0
 #include "lh_net.h"
 #include "lh_files.h"
 #include "lh_event.h"
 #include "lh_dir.h"
-
-#if 0
 #include "lh_compress.h"
 #include "lh_image.h"
-
-#define ALLOC_GRAN 4
-#define BUF_GRAN   64
 #endif
 
 typedef struct vertex {
@@ -207,37 +204,38 @@ int test_arrays() {
 
     int i,s;
 
-    lh_declare_buffer_i(buf);
-    lh_arr_allocate(buf,200,16);
+    _BUFi(buf);
+    lh_arr_allocate(GAR(buf),200);
+
     for(i=0; i<buf_cnt; i++) buf_ptr[i] = (uint8_t)i;
     TEST_ARRAY("lh_arr_allocate",buf,199*buf_cnt/2);
 
     for(i=200; i<1000; i++) {
-        lh_arr_resize(buf,i+1,16);
+        arr_resize(GAR(buf),i+1);
         buf_ptr[i] = (uint8_t)i;
     }
     for(i=0,s=0; i<1000; i++) s+=(uint8_t)i;
     TEST_ARRAY("lh_arr_add",buf,s);
 
-    lh_arr_new(buf) = 0x55;
+    arr_new(GAR(buf)) = 0x55;
     s+=0x55;
     TEST_ARRAY("lh_arr_new",buf,s);
 
-    lh_arr_insert(buf,900) = 0xAA;
+    arr_insert(GAR(buf),900) = 0xAA;
     s+=0xAA;
     TEST_ARRAY("lh_arr_insert",buf,s);
 
-    lh_arr_delete(buf,700);
-    lh_arr_delete(buf,500);
-    lh_arr_delete(buf,300);
+    arr_delete(AR(buf),700);
+    arr_delete(AR(buf),500);
+    arr_delete(AR(buf),300);
     s -= (700%256)+(500%256)+(300%256);
     TEST_ARRAY("lh_array_delete",buf,s);
 
-    lh_arr_delete_range(buf,100,5);
+    arr_delrange(AR(buf),100,5);
     s -= 100+101+102+103+104;
     TEST_ARRAY("lh_array_delete_range", buf,s);
 
-    free(buf_ptr);
+    lh_arr_free(AR(buf));
     
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -526,32 +524,30 @@ int test_bprintf() {
     printf("\n\n====== Testing bprintf ======\n");
     int fail = 0, f;
 
-    lh_declare_buffer_i(test);
-
-    //lh_array_resize_g(ptr,len,10,256);
+    _BUFi(test);
 
     int res;
-    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
     printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(test_ptr, test_cnt);
-    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    hexdump(AR(test));
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
     printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(test_ptr, test_cnt);
-    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    hexdump(AR(test));
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
     printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(test_ptr, test_cnt);
+    hexdump(AR(test));
 
     test_cnt = LH_BUFPRINTF_GRAN;
-    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
     printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(test_ptr, test_cnt);
+    hexdump(AR(test));
 
     test_cnt = 512;
-    res = bprintf(test,"Hello World! ptr=%p len=%zd (%s:%d)\n",test_ptr,test_cnt,__func__,__LINE__);
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
     printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(test_ptr, test_cnt);
+    hexdump(AR(test));
     
-    free(test_ptr);
+    lh_arr_free(AR(test));
     
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -824,12 +820,9 @@ int main(int ac, char **av) {
     fail += test_stream();
     fail += test_wstream();
     fail += test_unpack();
-    
 
-    /*
     //// lh_files.h
     //fail += test_files();
-    */
     
     //// lh_net.h
     //// lh_event.h
