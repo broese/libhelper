@@ -98,15 +98,31 @@
 /**
  * @name Resizable Arrays
  * Macros for handling expandable arrays and buffers.
- * The expandable arrays are defined via variable 'ptr' holding the pointer
- * to data and 'cnt' - an integer variable holding the count of elements.
+ * The resizable arrays come in two types. The low-level functions take
+ * specific names \c ptr for the pointer and \c cnt for the integer variable
+ * holding the count of elements. The high-level functions only take the common
+ * \c name and derive the names of the pointer and the count variables from it
+Ü* by adding \c _ptr and \c _cnt respectively.
+ * 
+ * The variables for the arrays of the first type need to be declared by user.
+ * The arrays of the second kind, you can use lh_declare_ macros.
+ *
  * The macros perform allocating and resizing of these arrays. Allocation
  * granularity can be additionally specified in the granular versions.
+ * 
+ * The operations on the array (allocate, resize, add, etc) come in two kinds -
+ * the standard named macro does not clear the newly allocated elements, and
+ * the macros with the _c suffix do.
+ * 
+ * The high-level functions allow you to specify the granularity as the optional
+ * parameter at the end. If ommitted, the granularity 1 is assumed by default.
+ * You need to specify the granularity explicitly in the low-level macros.
  *
  * NOTE: You <b>must always</b> use same granularity when allocating and
  * reallocating an array throughout its lifetime. If you increase the
  * granularity, you risk memory corruption as the fucntions will make a
- * wrong assumption about the allocated size.
+ * wrong assumption about the allocated size. \c setgran macros can be used
+ * to ensuire specific granularity on an array.
  */
 
 /*! \brief Resize the allocted memory of an array to a given number of elements.
@@ -134,14 +150,23 @@
     type * name ## _ptr;                     \
     size_t name ## _cnt;                     
 
+/*! \brief Declare a resizable buffer
+ * \param name Base name of the array
+ */
 #define lh_declare_buffer(name)                 \
     uint8_t * name ## _ptr;                     \
     size_t name ## _cnt;                     
 
+/*! \brief Declare a resizable array and reset it.
+ * \param name Base name of the array
+ */
 #define lh_declare_array_i(type,name)          \
     type * name ## _ptr = NULL;                \
     size_t name ## _cnt = 0;                     
 
+/*! \brief Declare a resizable buffer and reset it.
+ * \param name Base name of the array
+ */
 #define lh_declare_buffer_i(name)                 \
     uint8_t * name ## _ptr = NULL;                \
     size_t name ## _cnt = 0;                     
@@ -159,17 +184,30 @@
  * \param cnt Name of the counter variable
  * \param gran Granularity of allocation, must be power of 2
  */
-#define lh_arr_setgran_ptr(ptr,cnt,gran)                    \
+#define lh_arr_setgran_ptr(ptr,cnt,gran)        \
     lh_resize((ptr),lh_align((cnt),(gran)))
 
+/*! \brief Set granularity and clear the tail of the allocated array
+ * \param ptr Name of the pointer variable
+ * \param cnt Name of the counter variable
+ * \param gran Granularity of allocation, must be power of 2
+ */
 #define lh_arr_setgran_ptr_c(ptr,cnt,gran) {                \
         lh_arr_setgran_ptr(ptr,cnt,gran);                   \
         lh_clear_range(ptr,cnt,lh_align((cnt),(gran))-cnt); \
     }
 
+/*! \brief Set granularity for a 'named' resizable array
+ * \param name Base name of the array
+ * \param gran Granularity of allocation, must be power of 2
+ */
 #define lh_arr_setgran(name,gran)                           \
     lh_arr_setgran_ptr(name##_ptr,name##_cnt,gran);
 
+/*! \brief Set granularity for a 'named' resizable array and clear the tail
+ * \param name Base name of the array
+ * \param gran Granularity of allocation, must be power of 2
+ */
 #define lh_arr_setgran_c(name,gran)                         \
     lh_arr_setgran_ptr_c(name##_ptr,name##_cnt,gran);
 
@@ -472,7 +510,9 @@ static inline void lh_multiarray_delete_internal(int *cnt, int from, int num, ..
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LH_BUFPRINTF_GRAN 64
+#ifndef LH_BUFPRINTF_GRAN
+#define LH_BUFPRINTF_GRAN 256
+#endif
 
 static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, const char *fmt,...) {
     // remaining space in the allocated buffer
