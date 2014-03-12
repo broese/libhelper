@@ -7,7 +7,7 @@ CONFIG=-include config.h
 AR=ar
 
 #LIBOBJ=lh_image.o lh_compress.o lh_net.o lh_event.o lh_dir.o lh_files.o
-LIBOBJ=lh_debug.o
+LIBOBJ=lh_debug.o lh_files.o
 
 all: test libhelper.a
 

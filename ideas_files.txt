@@ -1,0 +1,85 @@
+Decisions:
+
+file type:
+ fd   : default
+ path : consider for some actions only (like load)
+ fp   : implement via macro
+
+position:
+ 0    : default for load
+ x    : default for read_at
+ cur  : default for read (no offset parameter)
+
+length to read :
+ to EOF     : 
+ specified
+
+destination:
+ static buffer    :
+  param:  uint8_t * ptr, ssize_t len
+  return: ssize_t readlen
+  error:  if does not fit
+ resizable buffer :
+  param:  uint8_t ** ptrp, ssize_t *lenp
+  return: bool error
+  error:  only 
+ allocate self    : -> uint8_t * ptr, ssize_t len
+
+
+
+Actions:
+
+load : read entire file into buffer
+ - static buffer => error if does not fit
+ - resizable buffer => needs a reference to a buffer
+ - allocated buffer 
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+type 1:
+
+param1: (uint8_t *) buffer pointer, NULL if buffer should be allocated
+param2: (ssize_t)   size to read
+return: (uint8_t *) buffer pointer, same as param1 or new pointer if allocated, NULL if error
+
+Pro   : 
+Contra: cannot make a partial read (i.e. 1000 bytes requested, but only 500 read) and return the resulting length
+
+type 2:
+
+param1: (uint8_t **) buffer pointer variable
+param2: (ssize_t)    size to read
+return: (ssize_t)    actual read size
+
+Pro   : can signal various errors as negative or 0 return: 0 for EOF, <0 for error (if size to read was specified 0, return error)
+Contra: user needs to have a variable for buffer prepared, and if he wants the allocation, set to NULL, cannot simply use static arrays as buffers
+
+
+if we allocate, we need to either:
+- supply a uint8_t ** as parameter and set it to NULL
+or
+- return uint8_t *
+
+
+ssize_t lh_read(int fd, uint8_t *buf, ssize_t size [, off_t pos] );
+
+
+
+
+ssize_t lh_read(int fd, uint8_t *buf, ssize_t size [, off_t pos] ); - this is basically like lh_poll_read_once
+ssize_t lh_read_resize(int fd, uint8_t **bufp, ssize_t *sizep [, off_t pos] ); - this can resize and allocate as you wish
+uint8_t *lh_read_new(int fd, ssize_t size [, off_t pos] ); - just allocate and give me the block, fail if incomplete read
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+typedef struct _lh_buffer {
+    uint8_t * __ptr;
+    ssize_t allocated;
+    ssize_t rpos;
+    ssize_t wpos;
+}
+

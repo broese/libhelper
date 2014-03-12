@@ -3,10 +3,121 @@
 #include "lh_debug.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <limits.h>
 
+////////////////////////////////////////////////////////////////////////////////
+
+off_t lh_filesize(int fd) {
+    struct stat st;
+    if (fd<0) LH_ERROR(-1,"Incorrect file descriptor","");
+    if (fstat(fd, &st)) LH_ERROR(-1,"Failed to stat file descriptor %d",fd);
+    return st.st_size;
+}
+
+off_t lh_filesize_path(const char * path) {
+    struct stat st;
+    if (stat(path, &st)) LH_ERROR(-1,"Failed to stat file %s",path);
+    return st.st_size;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static int lh_open_file(const char *path, off_t *sizep, int flags, const char *smode) {
+    //FIXME: respect the _LARGEFILE define?
+    flags |= O_LARGEFILE;
+   
+    int fd;
+    if (flags &= O_CREAT)
+        fd = open(path, flags, LH_FILE_CREAT_MODE);
+    else
+        fd = open(path, flags);
+
+    if (sizep) *sizep = -1;
+    if (fd<0) LH_ERROR(-1,"Failed to open %s for %s",path,smode);
+    if (sizep) *sizep = lh_filesize(fd);
+
+    return fd;
+}
+
+int lh_open_read(const char *path, off_t *sizep) {
+    return lh_open_file(path,sizep,O_RDONLY,"reading");
+}
+
+int lh_open_write(const char *path) {
+    return lh_open_file(path,NULL,O_WRONLY|O_CREAT,"writing");
+}
+
+int lh_open_update(const char *path, off_t *sizep) {
+    return lh_open_file(path,sizep,O_RDWR|O_CREAT,"updating");
+}
+
+int lh_open_append(const char *path, off_t *sizep) {
+    return lh_open_file(path,sizep,O_WRONLY|O_CREAT|O_APPEND,"appending");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+ssize_t lh_read_at(int fd, uint8_t *buffer, ssize_t size, off_t pos) {
+    if (!buffer || size <= 0 || fd < 0) return LH_FILE_INVALID;
+
+    if (pos>=0) {
+        if (lseek(fd, pos, SEEK_SET)<0)                                    
+            LH_ERROR(NULL, "Failed to seek to offset %jd", (intmax_t) pos);
+    }
+
+    ssize_t rbytes = read(fd, buffer, size);
+
+    if (rbytes == 0) return LH_FILE_EOF;
+
+    if (rbytes < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return LH_FILE_WAIT;
+        else
+            return LH_FILE_ERROR;
+    }
+
+    return rbytes;
+}
+
+ssize_t lh_load(const char *path, uint8_t **bufp) {
+    off_t fsize;
+    int fd = lh_open_read(path, &fsize);
+
+    if (fd<0) return LH_FILE_ERROR;
+
+    // assert that the file is not larger than the largest possible buffer
+    if (sizeof(off_t)>sizeof(ssize_t) && fsize >= SSIZE_MAX) {
+        close(fd);
+        LH_ERROR(LH_FILE_INVALID, "File size (%jd) exceeds limits of ssize_t (%zd bits)",
+                 (intmax_t)fsize, sizeof(ssize_t)*8 );
+    }
+
+    // special case if the file has length of 0 - allocate 1 byte,
+    // since malloc will fail on size 0
+    if (fsize == 0) {
+        *bufp = malloc(1);
+        close(fd);
+        return 0;
+    }
+
+    *bufp = malloc((ssize_t)fsize);
+    if (!*bufp) {
+        close(fd);
+        LH_ERROR(LH_FILE_ERROR, "Failed to allocate %zd bytes of memory",(ssize_t)fsize);
+    }
+
+    ssize_t rbytes = lh_read_at(fd, *bufp, (ssize_t)fsize, 0);
+    
+    close(fd);
+    return rbytes;
+}
+
+
+
+#if 0
 ////////////////////////////////////////////////////////////////////////////////
 // stat-related functions
 
@@ -161,4 +272,10 @@ int lh_append_file(const char *path, const uint8_t *data, ssize_t size) {
 
     return res;
 }
+
+
+#endif
+
+
+
 

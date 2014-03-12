@@ -9,119 +9,90 @@
 #include <stdint.h>
 #include <string.h>
 
-////////////////////////////////////////////////////////////////////////////////
+#ifndef LH_FILE_CREAT_MODE
+#define LH_FILE_CREAT_MODE 0777
+#endif
 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @name Stat-related functions
 
-/*! \brief Return the size of a file specified by path
- * \param path Path of the file (relative or absolute)
- * \return Size of the file in bytes, -1 on error. */
+off_t lh_filesize(int fd);
 off_t lh_filesize_path(const char * path);
-
-/*! \brief Return the size of a file specified by an open file descriptor
- * \param fp File descriptor
- * \return Size of the file in bytes, -1 on error. */
-off_t lh_filesize_fp(FILE * fp);
+#define lh_filesize_fp(fp) lh_filesize(fileno(fp))
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @name File Opening
+/// @name Opening files
 
-/*! \brief Open file at specific path for reading
- * File is readable only, read position is set at the beginning
- * \param path Path of the file (relative or absolute)
- * \param sizep Pointer to an off_t variable where the size of the file will be
- * stored. NULL if not required.
- * \return File descriptor, NULL on error. */
-FILE *lh_open_file_read(const char *path, off_t *sizep);
-
-/*! \brief Open file at specific path for writing.
- * File is writable only, file is created or truncated, write position is set at the beginning
- * \param path Path of the file (relative or absolute)
- * \return File descriptor, NULL on error. */
-FILE *lh_open_file_write(const char *path);
-
-/*! \brief Open file at specific path for updating. 
- * File is both readable and writable, read/write position is set at the beginning
- * \param path Path of the file (relative or absolute)
- * \param sizep Pointer to an off_t variable where the size of the file will be
- * stored. NULL if not required.
- * \return File descriptor, NULL on error. */
-FILE *lh_open_file_update(const char *path, off_t *sizep);
-
-/*! \brief Open file at specific path for appending
- * File is writable only, write position is set at the end
- * \param path Path of the file (relative or absolute)
- * \param sizep Pointer to an off_t variable where the size of the file will be
- * stored. NULL if not required.
- * \return File descriptor, NULL on error. */
-FILE *lh_open_file_append(const char *path, off_t *sizep);
+int lh_open_read(const char *path, off_t *sizep);
+int lh_open_write(const char *path);
+int lh_open_update(const char *path, off_t *sizep);
+int lh_open_append(const char *path, off_t *sizep);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @name Reading files
 
-/*! \brief Read a segment of file from opened descriptor at current position
- * \param fp File descriptor
- * \param size Size of data to read, in bytes
- * \param buffer Pointer to a buffer to store data.
- * If NULL, a buffer of appropriate size will be allocated
- * \return Pointer to the buffer with read data. NULL if an error occured.
- * If buffer was supplied (non-NULL), returned value will be identical
- * If buffer was not supplied, returned value is the allocated buffer, must be freed by caller
- */
-uint8_t * lh_read_fp(FILE *fp, ssize_t size, uint8_t * buffer);
+#define LH_FILE_WAIT     0  // read/write would block - try again later
+#define LH_FILE_EOF     -1  // end of file reached
+#define LH_FILE_INVALID -2  // invalid parameters supplied
+#define LH_FILE_ERROR   -3  // error writing/reading file
 
-/*! \brief Read a segment of file from opened descriptor at specified position
- * \param fp File descriptor
- * \param pos File position to start reading from, in bytes
- * \param size Size of data to read, in bytes
- * \param buffer Pointer to a buffer to store data.
- * If NULL, a buffer of appropriate size will be allocated
- * \return Pointer to the buffer with read data. NULL if an error occured.
- * If buffer was supplied (non-NULL), returned value will be identical
- * If buffer was not supplied, returned value is the allocated buffer, must be freed by caller
- */
-uint8_t * lh_read_fp_at(FILE *fp, off_t pos, ssize_t size, uint8_t * buffer);
+// First decision - no allocation, only read to static buffer
+// We decide later what to do with the allocation - possible approaches:
+// 1. separate function with no buffer parameter
+// 2. separate function with buffer pointer parameter
+// 3. only work with resizable buffers
 
-/*! \brief Read the entire contents of a file from opened descriptor
- * \param fp File descriptor
- * \param sizep Pointer to a ssize_t variable, where the file length will be stored
- * \return Pointer to the buffer with read data. NULL if an error occured.
- * The returned buffer is allocated by the function, must be freed by the caller
- */
-uint8_t * lh_load_fp(FILE *fp, ssize_t *sizep);
+// Second decision - read only for opened file descriptors (fd or fp)
+// Load only for paths - there seems to be little use for reading from the middle of 
+// a file not opened yet
+// Or maybe: have a function with offset and size, and a wrapper macro without
+// Also - does it make sence to load into static buffer? I don't think so
 
-/*! \brief Read a segment of file specified by path, starting from offset 0
+// Third decision - load is only for allocation
+
+/*! \brief Read a block from a file descriptor, to a static buffer.
+ * \param fd File descriptor
+ * \param buffer Buffer to store the data
+ * \param size Number of bytes to read
+ *             Buffer must offer at least that many bytes of storage
+ * \param pos File offset to read from. <0 means - from current position
+ * \return If >0 : Number of bytes actually read
+ *         If <=0 : One of the LH_FILE_* constants
+ */
+ssize_t lh_read_at(int fd, uint8_t *buffer, ssize_t size, off_t pos);
+
+#define lh_read(fd,buffer,size,...) lh_read_at(fd,buffer,size,##__VA_ARGS_,-1)
+
+#define lh_read_fp(fp,buffer,size,...) lh_read_at(fileno(fp),buffer,size,##__VA_ARGS_,-1)
+
+/*! \brief Read the entire file from a path, allocate the buffer for the data
  * \param path File path
- * \param size Size of data to read, in bytes
- * \param buffer Pointer to a buffer to store data.
- * If NULL, a buffer of appropriate size will be allocated
- * \return Pointer to the buffer with read data. NULL if an error occured.
- * If <i>buffer</i> was supplied (non-NULL), returned value will be identical
- * If <i>buffer</i> was not supplied, returned value is the allocated buffer,
- * must be freed by the caller
+ * \param bufp Pointer to the uint8_t variable where the buffer will be stored
+ * \return The length of the read data
  */
-uint8_t * lh_read_file(const char *path, ssize_t size, uint8_t * buffer);
+ssize_t lh_load(const char *path, uint8_t **bufp);
 
-/*! \brief Read a segment of file specified by path, starting from specified offset
- * \param path File path
- * \param pos File position to start reading from, in bytes
- * \param size Size of data to read, in bytes
- * \param buffer Pointer to a buffer to store data.
- * If NULL, a buffer of appropriate size will be allocated
- * \return Pointer to the buffer with read data. NULL if an error occured.
- * If <i>buffer</i> was supplied (non-NULL), returned value will be identical
- * If <i>buffer</i> was not supplied, returned value is the allocated buffer,
- * must be freed by the caller
- */
-uint8_t * lh_read_file_at(const char *path, off_t pos, ssize_t size, uint8_t * buffer);
+/*
+TODO:
+lh_read_append - read a chunk of data, append to existing data in the buffer
+lh_load_segment - read a file from a path, but only a chunk at given position and length
 
-/*! \brief Read the entire contents of a file specified by path
- * \param path File path
- * \param sizep Pointer to a ssize_t variable, where the file length will be stored
- * \return Pointer to the buffer with read data. NULL if an error occured.
- * The returned buffer is allocated by the function, must be freed by the caller
- */
-uint8_t * lh_load_file(const char *path, ssize_t *sizep);
+lh_read_buf - higher-level functions that use lh_buffer_t
+lh_load_buf
+*/
+
+
+
+
+
+
+
+
+
+
+
+#if 0
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @name Writing files
@@ -182,5 +153,7 @@ int lh_append_file(const char *path, const uint8_t *data, ssize_t size);
 #define write_fp(fp,data,size)          lh_write_fp(fp,data,size)
 #define write_fp_at(fp,pos,data,size)   lh_write_fp(fp,pos,data,size)
 #define append_file(path,data,size)     lh_append_file(path,data,size)
+
+#endif
 
 #endif
