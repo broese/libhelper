@@ -1,6 +1,8 @@
 #include "lh_files.h"
 #include "lh_buffers.h"
 #include "lh_debug.h"
+
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -60,6 +62,69 @@ int lh_open_append(const char *path, off_t *sizep) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+static inline ssize_t determine_read_size(int fd, ssize_t length) {
+    off_t offset = tell(fd);
+    if (offset < 0) return -1;
+
+    off_t filesize = lh_filesize(fd);
+    if (filesize < 0) return -1;
+
+    ssize_t rsize = filesize-offset;
+    if (rsize<0) return 0;
+
+    return length>rsize ? rsize : length;
+
+}
+
+ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset) {
+    if (!buf || fd < 0) return LH_FILE_INVALID;
+
+    if (offset >= 0) {
+        if (lseek(fd, offset, SEEK_SET)<0)                                    
+            LH_ERROR(LH_FILE_ERROR, "Failed to seek to offset %jd", (intmax_t) offset);
+    }
+
+    ssize_t rsize = determine_read_size(fd, length);
+    if (rsize < 0) rsize = length; //TODO: handle unseekable files
+
+    ssize_t rbytes = read(fd, buf, rsize);
+    
+    if (rbytes == 0) return LH_FILE_EOF;
+
+    if (rbytes < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return LH_FILE_WAIT;
+        else
+            return LH_FILE_ERROR;
+    }
+
+    return rbytes;
+}
+
+ssize_t lh_read_alloc_at(int fd, uint8_t **bufp, ssize_t length, off_t offset) {
+    if (!bufp || fd < 0) return LH_FILE_INVALID;
+
+    if (offset >= 0) {
+        if (lseek(fd, offset, SEEK_SET)<0)                                    
+            LH_ERROR(LH_FILE_ERROR, "Failed to seek to offset %jd", (intmax_t) offset);
+    }
+
+    ssize_t rsize = determine_read_size(fd, length);
+    assert(rsize >= 0); //TODO: handle unseekable files
+
+    
+    
+
+    
+}
+
+
+
+
+
+
+#if 0
+
 ssize_t lh_read_at(int fd, uint8_t *buffer, ssize_t size, off_t pos) {
     if (!buffer || size <= 0 || fd < 0) return LH_FILE_INVALID;
 
@@ -115,6 +180,7 @@ ssize_t lh_load(const char *path, uint8_t **bufp) {
     return rbytes;
 }
 
+#endif
 
 
 #if 0

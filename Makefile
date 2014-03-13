@@ -1,7 +1,7 @@
 CC=gcc -std=gnu99
 CFLAGS=-g -pg
-LIBSSOL=-lsocket -lnsl
-LIBS=-lz -lpng #$(LIBSSOL)
+LIBSSOL=-lsocket -lnsl -lmd5
+LIBS=-lz -lpng $(LIBSSOL)
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=1
 CONFIG=-include config.h
 AR=ar

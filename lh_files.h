@@ -37,6 +37,58 @@ int lh_open_append(const char *path, off_t *sizep);
 #define LH_FILE_INVALID -2  // invalid parameters supplied
 #define LH_FILE_ERROR   -3  // error writing/reading file
 
+typedef struct _lh_buf_t {
+    uint8_t * data_ptr;
+    ssize_t   data_cnt;  // this is actually the "writing index"
+                         // maybe we can define the alternative macro AR() in the scope of lh_files
+    ssize_t   data_ridx; // read index - this can be used by the write functions
+    int       data_gran;
+} lh_buf_t;
+
+ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset);
+ssize_t lh_read_alloc_at(int fd, uint8_t **bufp, ssize_t length, off_t offset);
+ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset);
+
+#define lh_read_static(...) lh_read_static_at(##__VA_ARGS__,-1,-1)
+#define lh_read_alloc(...)  lh_read_alloc_at(##__VA_ARGS__,-1,-1)
+#define lh_read_buf(...)    lh_read_buf_at(##__VA_ARGS__,-1,-1)
+
+#define lh_pread_static(path, ...) ( {                                  \
+            int fd = lh_open_read(path, NULL);                          \
+            ssize_t rlen = lh_read_static_at(fd, ##__VA_ARGS__,-1,-1);  \
+            close(fd);                                                  \
+            rlen; } )
+
+#define lh_pread_alloc(path, ...) ( {                                   \
+            int fd = lh_open_read(path, NULL);                          \
+            ssize_t rlen = lh_read_alloc_at(fd, ##__VA_ARGS__,-1,-1);   \
+            close(fd);                                                  \
+            rlen; } )
+
+#define lh_pread_buf(path, ...) ( {                                 \
+            int fd = lh_open_read(path, NULL);                      \
+            ssize_t rlen = lh_read_buf_at(fd, ##__VA_ARGS__,-1,-1); \
+            close(fd);                                              \
+            rlen; } )
+
+#define lh_fpread_static(fp,...) lh_read_static(fileno(fp),__VA_ARGS__)
+#define lh_fpread_alloc(fp,...)  lh_read_alloc(fileno(fp),__VA_ARGS__)
+#define lh_fpread_buf(fp,...)    lh_read_buf(fileno(fp),__VA_ARGS__)
+
+
+
+
+
+
+
+
+
+
+
+
+#if 0
+
+
 // First decision - no allocation, only read to static buffer
 // We decide later what to do with the allocation - possible approaches:
 // 1. separate function with no buffer parameter
@@ -82,7 +134,7 @@ lh_read_buf - higher-level functions that use lh_buffer_t
 lh_load_buf
 */
 
-
+#endif
 
 
 

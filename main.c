@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
+
 #include <unistd.h>
 #include <math.h>
 #include <sys/socket.h>
@@ -18,10 +20,11 @@
 
 #include "lh_buffers.h"
 #include "lh_bytes.h"
+#include "lh_debug.h"
+#include "lh_files.h"
 
 #if 0
 #include "lh_net.h"
-#include "lh_files.h"
 #include "lh_event.h"
 #include "lh_dir.h"
 #include "lh_compress.h"
@@ -454,9 +457,29 @@ int test_wstream() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <md5.h>
+
+uint8_t pr_init[16] = { 0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,
+                        0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,};
+#define PRSIZE 1048576
+#define PRNAME "testfile.dat"
+
+int create_test_file() {
+    lh_create_buf(seq,PRSIZE);
+    int i;
+
+    memcpy(seq,pr_init,16);
+    for (i=16; i<PRSIZE; i+=16)
+        md5_calc(seq+i,seq+i-16,16);
+
+    
+}
+
 int test_files() {
     printf("\n\n====== Testing bytestream writing ======\n");
     int fail = 0, f;
+
+    fail += create_test_file();
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -806,6 +829,7 @@ int main(int ac, char **av) {
 
     int fail = 0;
 
+    /*
     //// lh_buffers.h
     fail += test_align();
     fail += test_clear();
@@ -813,16 +837,18 @@ int main(int ac, char **av) {
     fail += test_arrays();
     fail += test_multiarrays();
     fail += test_bprintf();
-
+    */
     
+    /*
     //// lh_bytes.h
     fail += test_bswap();
     fail += test_stream();
     fail += test_wstream();
     fail += test_unpack();
+    */
 
     //// lh_files.h
-    //fail += test_files();
+    fail += test_files();
     
     //// lh_net.h
     //// lh_event.h

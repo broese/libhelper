@@ -193,6 +193,77 @@ LH_BUF_ALLOC(bufp) => *bufp, bufp, NULL
 LH_BUF_BUFT(buft)  => buft->data_ptr, &buft->data_ptr, buft->data_cnt, 
 
 
+////////////////////////////////////////////////////////////////////////////////
 
+general:
+- return ssize_t of actually read data
+  - if appended to existing data, still returns the length read appended in this step
+  - 0/negative values designate errors
+- always-present parameters : file source, buffer target
+- optional parameters : length, offset
+
+source:
+- file descriptor           _read_
+- path                      _pread_
+- file pointer (optional)   _fpread_
+
+destination:
+- static buffer (fill from the start)    _static
+- allocate buffer (fill from the start)  _alloc
+- buf_t object (append)                  _buf
+
+length & offset
+- default length (-1: to the end) vs. specified
+- default offset (-1: from the current position) vs. specified
+- _at
+
+
+ssize_t lh_read_static(int fd, uint8_t *buffer)
+ssize_t lh_read_alloc(int fd, uint8_t **buffer)
+ssize_t lh_read_buf(int fd, buf_t *buf)
+
+ssize_t lh_read_static_at(int fd, uint8_t *buffer, ssize_t length, off_t offset)
+ssize_t lh_read_alloc_at(int fd, uint8_t **buffer, ssize_t length, off_t offset)
+ssize_t lh_read_buf_at(int fd, buf_t *buf, ssize_t length, off_t offset)
+
+#define lh_pread_static(path, ...) ( { \
+    int fd = lh_open_read(path, NULL); \
+    ssize_t rlen = lh_read_static_at(fd, ##__VA_ARGS__,-1,-1); \
+    close(fd); \
+    rlen; } )
+
+#define lh_pread_alloc(path, ...) ( { \
+    int fd = lh_open_read(path, NULL); \
+    ssize_t rlen = lh_read_alloc_at(fd, ##__VA_ARGS__,-1,-1); \
+    close(fd); \
+    rlen; } )
+
+#define lh_pread_buf(path, ...) ( { \
+    int fd = lh_open_read(path, NULL); \
+    ssize_t rlen = lh_read_buf_at(fd, ##__VA_ARGS__,-1,-1); \
+    close(fd); \
+    rlen; } )
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+optional parameters would work if they have same default values:
+
+#define fct_internal(file, buffer, length, offset, ...) ....
+
+#define fct(file, buffer, ...) fct_internal(file, buffer, ##__VA_ARGS__, -1, -1)
+
+fct(f,b) => fct_internal(f,b,-1,-1)                  : whole file, from current position (automatically from 0 for the 
+fct(f,b,len) => fct_internal(f,b,len,-1,-1)          : specific length, from current position
+fct(f,b,len,off) => fct_internal(f,b,len,off,-1,-1)  : specific length, specific offset
 
 
