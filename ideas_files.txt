@@ -83,3 +83,116 @@ typedef struct _lh_buffer {
     ssize_t wpos;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+I now realized that we also have use-cases for the "read/write chunk from path"
+cases - a bittorrent-like client that writes completed chunks into a normally
+closed file and fmap that writes restored blocks into output files. Both cases
+imply that the file is normally closed, we open it, write (or read) a block at
+specific offset and length and close again.
+
+////////////////////////////////////////////////////////////////////////////////
+
+Layered approach:
+
+Layer 1: low-level read
+
+ssize_t lh_read(int fd, uint8_t *buffer, ssize_t length) - this is basically the
+same as read(2), but the returned value simplifies the error handling - it will
+tell us explicitly if the read has failed
+
+Layer 1.5: offset handling (this is only a proposal, a weird but interesting approach)
+
+int lh_seek(fd, pos)
+int lh_rewind(fd)
+On success, it will simply return the fd value, on failure it will return -1.
+The functions could be used like this:
+lh_read(lh_seek(fd,10000),buf,1000)
+note: this will not work with files opened by path
+
+lh_read_at(int fd, uint8_t *buffer, ssize_t length, off_t pos)
+same function, just added position parameter
+
+Layer 2: read from path. File is opened for the read/write action and then closed again
+
+ssize_t lh_pread(const char *path, uint8_t *buffer, ssize_t length)
+ssize_t lh_pread_at(const char *path, uint8_t *buffer, ssize_t length, off_t offset)
+
+Layer 3: load from fd or path completely
+
+ssize_t lh_pload(const char *path, uint8_t **buffer)
+ssize_t lh_load(int fd, uint8_t **buffer)
+
+Layer 4: load chunk from fd or path
+
+ssize_t lh_pload_at(const char *path, uint8_t **buffer, ssize_t len, off_t offset)
+ssize_t lh_load_at(int fd, uint8_t **buffer, ssize_t len, off_t offset)
+
+len < 0 => load to the end
+
+Layer 5: loading using buffers
+
+typedef struct _buf_t {
+    uint8_t * data_ptr;
+    ssize_t   data_cnt;  // this is actually the "writing index"
+                         // maybe we can define the alternative macro AR() in the scope of lh_files
+    ssize_t   data_ridx; // read index - this can be used by the write functions
+    int       data_gran;
+} buf_t;
+
+lh_bufinit(buf_t *buf)
+- this frees the buffer allocation, if any and initializes it
+
+ssize_t lh_pload_buf(const char *path, buf_t *buf)
+ssize_t lh_load_buf(int fd, buf_t *buf)
+
+ssize_t lh_pload_buf_at(const char *path, buf_t *buf, ssize_t len, off_t offset)
+ssize_t lh_load_buf_at(int fd, buf_t *buf, ssize_t len, off_t offset)
+
+- these functions will ERASE the buffer and give you it freshly filled with data
+- ona second thought we could get rid of those - simply passing an initialized buffer to an load_append function will do the same
+
+ssize_t lh_pload_append(const char *path, buf_t *buf)
+...
+- these functions will append the loaded data to the contents of the buffer
+
+
+what we really need is a better naming scheme, because in reality, following names designate:
+
+read        : read into static buffer
+load        : allocate a buffer and return pointer via uint8_t ** bufp
+load_buf    : allocate a buffer in a buf_t struct
+load_append : reallocate existing buffer in a buf_t struct, append data
+
+
+_s , _static
+_a , _alloc
+_b , _buf
+_ba , _bufa
+
+ULTIMATE LAYER: specify scheme as flags
+
+ssize_t lh_read(int flags, void * file, void * buffer, ...)
+
+FILE_PATH,FILE_FD,FILE_FP
+BUF_STATIC,BUF_ALLOC,BUF_BUFT
+
+lh_read ("pslp","/tmp/shit.txt",&buf,100,1000)
+
+OTHER APPROACH:
+
+Macros that convert your parameters
+                   => fd, should_close
+LH_FILE_FD(fd)     => fd, 0
+LH_FILE_PATH(path) => open_read(path), 1
+LH_FILE_FP(fp)     => fileno(fp), 0
+
+                   => ptr, ptrvar, cntvar
+LH_BUF_STATIC(buf) => buf, NULL, NULL,
+LH_BUF_ALLOC(bufp) => *bufp, bufp, NULL
+LH_BUF_BUFT(buft)  => buft->data_ptr, &buft->data_ptr, buft->data_cnt, 
+
+
+
+
+
