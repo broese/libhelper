@@ -9,6 +9,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 #ifdef HAVE_MTRACE
 #if DEBUG_MEMORY
@@ -22,9 +26,9 @@
 #include "lh_bytes.h"
 #include "lh_debug.h"
 #include "lh_files.h"
+#include "lh_net.h"
 
 #if 0
-#include "lh_net.h"
 #include "lh_event.h"
 #include "lh_dir.h"
 #include "lh_compress.h"
@@ -817,6 +821,34 @@ int test_dns() {
 
 #endif
 
+#define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode));
+
+void testshit() {
+    struct stat st;
+    CLEAR(st);
+
+    int ss = lh_listen_tcp4_local(23456);
+    int res = fstat(ss, &st);
+
+    if (res < 0) {
+        printf("stat on the server socket failed : %d %s\n", errno, strerror(errno));
+        return;
+    }
+    
+    printf("stat on the server socket succeeded: st_mode = %08x st_ino=%d st_dev=%d\n"
+           "st_size=%jd\n",st.st_mode,st.st_ino,st.st_dev,(intmax_t)st.st_size);
+
+    iss(S_ISREG);
+    iss(S_ISDIR);
+    iss(S_ISCHR);
+    iss(S_ISBLK);
+    iss(S_ISFIFO);
+    iss(S_ISLNK);
+    iss(S_ISSOCK);
+
+    close(ss);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -848,7 +880,7 @@ int main(int ac, char **av) {
     */
 
     //// lh_files.h
-    fail += test_files();
+    //fail += test_files();
     
     //// lh_net.h
     //// lh_event.h
@@ -858,13 +890,11 @@ int main(int ac, char **av) {
 
     //lh_dirwalk_test(av[1]?av[1]:".");
 
+    testshit();
 
     //test_compression();
     //test_image2();
     //test_image_resize();
-
-    //test_server();
-
 
     //printf("%s %s\n",av[1],av[2]);
     //benchmark_allocation(atoi(av[1]),atoi(av[2]));
