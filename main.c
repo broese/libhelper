@@ -461,7 +461,11 @@ int test_wstream() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef HAVE_OPENSSL
+#include <openssl/md5.h>
+#else
 #include <md5.h>
+#endif
 
 uint8_t pr_init[16] = { 0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,
                         0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,};
@@ -474,7 +478,11 @@ int create_test_file() {
 
     memcpy(seq,pr_init,16);
     for (i=16; i<PRSIZE; i+=16)
+#ifdef HAVE_OPENSSL
+        MD5(seq+i,16,seq+i-16);
+#else
         md5_calc(seq+i,seq+i-16,16);
+#endif
 
     
 }
@@ -821,11 +829,14 @@ int test_dns() {
 
 #endif
 
-#define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode));
+#define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode))
+#define sz(path) printf("%s : %jd\n", path, lh_filesize_path(path))
 
 void testshit() {
+
+#if 0
     struct stat st;
-    CLEAR(st);
+    //CLEAR(st);
 
     int ss = lh_listen_tcp4_local(23456);
     int res = fstat(ss, &st);
@@ -847,6 +858,15 @@ void testshit() {
     iss(S_ISSOCK);
 
     close(ss);
+#endif
+
+    sz("Makefile");
+    sz("/dev/urandom");
+    sz("/dev/sda");
+    sz("/dev/sda1");
+    sz(".");
+    sz("derp");
+    sz("does not exist");    
 }
 
 

@@ -10,26 +10,61 @@
 #include <errno.h>
 #include <limits.h>
 
+#ifdef HAVE_BLKGETSIZE64
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
+
+//TODO: handle non-regular files
 
 off_t lh_filesize(int fd) {
     struct stat st;
     if (fd<0) LH_ERROR(-1,"Incorrect file descriptor","");
     if (fstat(fd, &st)) LH_ERROR(-1,"Failed to stat file descriptor %d",fd);
-    return st.st_size;
+
+    if (S_ISREG(st.st_mode)) return st.st_size;
+
+#ifdef HAVE_BLKGETSIZE64
+    if (S_ISBLK(st.st_mode)) {
+        off_t nbytes;
+        if (ioctl(fd, BLKGETSIZE64, &nbytes)<0)
+            LH_ERROR(-1,"ioctl(BLKGETSIZE64) failed to FD %d",fd);
+        return nbytes;
+    }
+#endif
+
+    LH_ERROR(-1,"Cannot obtain size for this file type %d",fd);
 }
 
 off_t lh_filesize_path(const char * path) {
     struct stat st;
     if (stat(path, &st)) LH_ERROR(-1,"Failed to stat file %s",path);
-    return st.st_size;
+
+    if (S_ISREG(st.st_mode)) return st.st_size;
+
+#ifdef HAVE_BLKGETSIZE64
+    if (S_ISBLK(st.st_mode)) {
+        int fd = open(path, O_RDONLY);
+        if (fd<0) LH_ERROR(-1,"Failed to get read access to %s",path);
+
+        off_t nbytes;
+        if (ioctl(fd, BLKGETSIZE64, &nbytes)<0)
+            LH_ERROR(-1,"ioctl(BLKGETSIZE64) failed to %s",path);
+        return nbytes;
+    }
+#endif
+
+    LH_ERROR(-1,"Cannot obtain size for this file type %s",path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 static int lh_open_file(const char *path, off_t *sizep, int flags, const char *smode) {
-    //FIXME: respect the _LARGEFILE define?
+#ifdef O_LARGEFILE
     flags |= O_LARGEFILE;
+#endif
    
     int fd;
     if (flags &= O_CREAT)
@@ -63,7 +98,7 @@ int lh_open_append(const char *path, off_t *sizep) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline ssize_t determine_read_size(int fd, ssize_t length) {
-    off_t offset = tell(fd);
+    off_t offset = lseek(fd,0,SEEK_CUR);
     if (offset < 0) return -1;
 
     off_t filesize = lh_filesize(fd);
