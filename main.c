@@ -477,21 +477,55 @@ int create_test_file() {
     int i;
 
     memcpy(seq,pr_init,16);
-    for (i=16; i<PRSIZE; i+=16)
+    for (i=16; i<PRSIZE; i+=16) {
 #ifdef HAVE_OPENSSL
-        MD5(seq+i,16,seq+i-16);
+        MD5(seq+i-16,16,seq+i);
 #else
         md5_calc(seq+i,seq+i-16,16);
 #endif
+    }
 
-    
+    return !(lh_save(PRNAME,seq,PRSIZE)==PRSIZE);
 }
 
+int check_data(uint8_t * data, ssize_t length, const char * hash) {
+    uint8_t h[16],md[16];
+    if (hex_import(hash, h, sizeof(h))!=16) return 1;
+
+#ifdef HAVE_OPENSSL
+    MD5(data,length,md);
+#else
+    md5_calc(md,data,length);
+#endif
+
+    return (memcmp(h,md,16)!=0);
+}
+
+#define TESTFILE(name,buf,size,hash) {               \
+        int f=check_data(buf,size,hash);             \
+        fail += f;                                   \
+        printf("%s: %s\n", #name, PASSFAIL(!f));     \
+    }
+
 int test_files() {
-    printf("\n\n====== Testing bytestream writing ======\n");
+    printf("\n\n====== Testing file reading ======\n");
     int fail = 0, f;
 
     fail += create_test_file();
+
+    // static buffer
+
+    lh_create_buf(buf,16*1024*1024);
+    ssize_t sz;
+
+    sz = lh_load_static(PRNAME,buf);
+    fail += (sz != LH_FILE_INVALID);
+
+    sz = lh_load_static(PRNAME,buf,1024);
+    TESTFILE(lh_load_static,buf,1024,"7edaf7d57d2d166c0cb96788a447275d");
+    
+    sz = lh_load_static(PRNAME,buf,1024,1);
+    TESTFILE(lh_load_static,buf,1024,"235f3d4e19505dd5b5de38cf8ed6cf5e");
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -832,7 +866,15 @@ int test_dns() {
 #define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode))
 #define sz(path) printf("%s : %jd\n", path, lh_filesize_path(path))
 
-void testshit() {
+void testhex(const char *hex) {
+
+    uint8_t buf[4096];
+    ssize_t len = hex_import(hex, buf, sizeof(buf));
+    printf("%s\n",hex);
+    hexdump(buf,len);
+}
+
+int testshit() {
 
 #if 0
     struct stat st;
@@ -860,6 +902,7 @@ void testshit() {
     close(ss);
 #endif
 
+#if 0
     sz("Makefile");
     sz("/dev/urandom");
     sz("/dev/sda");
@@ -867,6 +910,24 @@ void testshit() {
     sz(".");
     sz("derp");
     sz("does not exist");    
+#endif
+
+#if 0
+    int fd = open("/dev/sda",O_RDONLY);
+    if (fd<0) LH_ERROR(-1,"Failed to open /dev/sda");
+    off_t pos = lseek(fd, 4096, SEEK_SET);
+    printf("Position after seeking to 4096 : %jd\n",(intmax_t)pos);
+    pos = lseek(fd, 0, SEEK_CUR);
+    printf("Position after tell() : %jd\n",(intmax_t)pos);
+    pos = lseek(fd, 4097, SEEK_SET);
+    printf("Position after seeking to 4097 : %jd\n",(intmax_t)pos);
+#endif
+
+    testhex("0123");
+    testhex("9827893872b3BCDE08ba2387");
+    testhex("9827893872b3BCDE08ba238");
+    testhex("38dcd48484e3(3b734");
+    testhex("");
 }
 
 
@@ -900,7 +961,9 @@ int main(int ac, char **av) {
     */
 
     //// lh_files.h
-    //fail += test_files();
+    LH_HERE;
+    fail += test_files();
+    LH_HERE;
     
     //// lh_net.h
     //// lh_event.h
@@ -910,7 +973,7 @@ int main(int ac, char **av) {
 
     //lh_dirwalk_test(av[1]?av[1]:".");
 
-    testshit();
+    //testshit();
 
     //test_compression();
     //test_image2();

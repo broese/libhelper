@@ -36,3 +36,22 @@ void hexprint(const unsigned char * data, ssize_t length) {
     for(i=0; i<length; i++)
         printf("%02x%s",*data++,(length==i+1)?"\n":" ");
 }
+
+#define HEXDIGIT(h) \
+    (h>='0' && h<='9') ? ( h-'0') :                 \
+        ( (h>='a' && h<='f') ? ( h-'a'+10) :        \
+          (h>='A' && h<='F') ? ( h-'A'+10) : -1)
+                                                     
+
+
+ssize_t hex_import(const char *hex, uint8_t *bin, ssize_t maxlen) {
+    ssize_t i;
+    for(i=0; i<maxlen; i++) {
+        char h = HEXDIGIT(*hex); hex++;
+        if (h<0) break;
+        char l = HEXDIGIT(*hex); hex++;
+        if (l<0) break;
+        bin[i]=(h<<4)|l;
+    }
+    return i;
+}

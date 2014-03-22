@@ -7,6 +7,7 @@ lh_debug - functions supporting debug output and error messages
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdint.h>
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -72,3 +73,4 @@ via exit(1).
 
 void hexdump(const unsigned char * data, ssize_t length);
 void hexprint(const unsigned char * data, ssize_t length);
+ssize_t hex_import(const char *hex, uint8_t *bin, ssize_t maxlen);

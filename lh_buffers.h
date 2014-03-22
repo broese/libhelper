@@ -144,7 +144,7 @@
  * \param ptr Pointer to allocated memory
  * \param from Index to move from
  * \param to Index to move to
-Ü* \param num Number of elements to move
+ * \param num Number of elements to move
  */
 #define lh_move(ptr, from, to, num) \
     memmove(ptr+to, ptr+from, num*sizeof(*ptr));

@@ -37,6 +37,14 @@ int lh_open_append(const char *path, off_t *sizep);
 #define LH_FILE_INVALID -2  // invalid parameters supplied
 #define LH_FILE_ERROR   -3  // error writing/reading file
 
+#ifndef LH_READ_SIZELESS_FACTOR
+#define LH_READ_SIZELESS_FACTOR 4
+#endif
+
+#ifndef LH_BUF_DEFAULT_GRAN
+#define LH_BUF_DEFAULT_GRAN 65536
+#endif
+
 typedef struct _lh_buf_t {
     uint8_t * data_ptr;
     ssize_t   data_cnt;  // this is actually the "writing index"
@@ -45,96 +53,107 @@ typedef struct _lh_buf_t {
     int       data_gran;
 } lh_buf_t;
 
-ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset);
-ssize_t lh_read_alloc_at(int fd, uint8_t **bufp, ssize_t length, off_t offset);
-ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset);
+ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...);
+ssize_t lh_read_alloc_at(int fd, uint8_t **bufp, ssize_t length, off_t offset, ...);
+ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
+
+/**
+ * = file source types =
+ * lh_read_*  : read from a file descriptor (int)
+ * lh_fread_* : read from a file pointer (FILE *)
+ * lh_load_*  : read from a path, opening and closing the file in process
+ *
+ * = destination buffer types =
+ * *_static : read into a static buffer (in this case length is mandatory!)
+ * *_alloc  : alloc a buffer of appropriate size and return it to the user
+ *            via uint8_t ** bufp variable
+ * *_buf    : use a lh_buf_t struct to manage the buffer. The user supplies
+ *            a pointer to lh_buf_t - it can be zeroed to initialize an
+ *            empty buffer. Unlike other functions, this read function will
+ *            append data to the existing data in the buffer, automatically
+ *            resizing it as needed
+ *
+ * length   : specifies the amount of data to read. This parameter is
+ *            optional, you can omit it when calling one of the wrapper
+ *            macros (you will need to omit the following offset as well)
+ *            or set it to -1 to signify omission. If the length is not
+ *            specified, the functions will attempt to read the entire file.
+ *            In case of the size-less files, such as STDIN, pipes, sockets,
+ *            etc., the function will attempt to read at most
+ *            LH_READ_SIZELESS_FACTOR * granularity bytes, aligned to the
+ *            next granularity boundary.
+ *
+ * offset   : specifies the offset to read from. This value is optional,
+ *            if omitted in the wrapping macros, or given as -1, the method
+ *            will read from the current position, for lh_load_ functions
+ *            this implies - from the beginning. If specified, but the file
+ *            is not seekable, it will generate an error.
+ */
 
 #define lh_read_static(...) lh_read_static_at(##__VA_ARGS__,-1,-1)
 #define lh_read_alloc(...)  lh_read_alloc_at(##__VA_ARGS__,-1,-1)
 #define lh_read_buf(...)    lh_read_buf_at(##__VA_ARGS__,-1,-1)
 
-#define lh_pread_static(path, ...) ( {                                  \
+#define lh_load_static(path, ...) ( {                                   \
             int fd = lh_open_read(path, NULL);                          \
-            ssize_t rlen = lh_read_static_at(fd, ##__VA_ARGS__,-1,-1);  \
-            close(fd);                                                  \
+            ssize_t rlen = LH_FILE_ERROR;                               \
+            if (fd >= 0) {                                              \
+                rlen = lh_read_static_at(fd, ##__VA_ARGS__,-1,-1);      \
+                close(fd);                                              \
+            }                                                           \
             rlen; } )
 
-#define lh_pread_alloc(path, ...) ( {                                   \
+#define lh_load_alloc(path, ...) ( {                                    \
             int fd = lh_open_read(path, NULL);                          \
-            ssize_t rlen = lh_read_alloc_at(fd, ##__VA_ARGS__,-1,-1);   \
-            close(fd);                                                  \
+            ssize_t rlen = LH_FILE_ERROR;                               \
+            if (fd >= 0) {                                              \
+                rlen = lh_read_alloc_at(fd, ##__VA_ARGS__,-1,-1);       \
+                close(fd);                                              \
+            }                                                           \
             rlen; } )
 
-#define lh_pread_buf(path, ...) ( {                                 \
-            int fd = lh_open_read(path, NULL);                      \
-            ssize_t rlen = lh_read_buf_at(fd, ##__VA_ARGS__,-1,-1); \
-            close(fd);                                              \
+#define lh_load_buf(path, ...) ( {                                      \
+            int fd = lh_open_read(path, NULL);                          \
+            ssize_t rlen = LH_FILE_ERROR;                               \
+            if (fd >= 0) {                                              \
+                rlen = lh_read_buf_at(fd, ##__VA_ARGS__,-1,-1);         \
+                close(fd);                                              \
+            }                                                           \
             rlen; } )
 
 #define lh_fpread_static(fp,...) lh_read_static(fileno(fp),__VA_ARGS__)
 #define lh_fpread_alloc(fp,...)  lh_read_alloc(fileno(fp),__VA_ARGS__)
 #define lh_fpread_buf(fp,...)    lh_read_buf(fileno(fp),__VA_ARGS__)
 
+////////////////////////////////////////////////////////////////////////////////
 
+ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...);
+ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
 
+#define lh_write(...)            lh_write_at(##__VA_ARGS__,-1,-1)
+#define lh_write_buf(...)        lh_write_buf_at(##__VA_ARGS__,-1,-1)
 
+#define lh_save(path, ...) ( {                                          \
+            int fd = lh_open_write(path);                               \
+            ssize_t wlen = LH_FILE_ERROR;                               \
+            if (fd >= 0) {                                              \
+                wlen = lh_write_at(fd, ##__VA_ARGS__,-1,-1);            \
+                close(fd);                                              \
+            }                                                           \
+            wlen; } )
 
+#define lh_save_buf(path, ...) ( {                                      \
+            int fd = lh_open_write(path);                               \
+            ssize_t wlen = LH_FILE_ERROR;                               \
+            if (fd >= 0) {                                              \
+                wlen = lh_write_buf_at(fd, ##__VA_ARGS__,-1,-1);        \
+                close(fd);                                              \
+            }                                                           \
+            wlen; } )
 
+#define lh_fwrite(fp,...)        lh_write(fileno(fp),__VA_ARGS__)
+#define lh_fwrite_buf(fp,...)    lh_write_buf(fileno(fp),__VA_ARGS__)
 
-
-
-
-
-
-#if 0
-
-
-// First decision - no allocation, only read to static buffer
-// We decide later what to do with the allocation - possible approaches:
-// 1. separate function with no buffer parameter
-// 2. separate function with buffer pointer parameter
-// 3. only work with resizable buffers
-
-// Second decision - read only for opened file descriptors (fd or fp)
-// Load only for paths - there seems to be little use for reading from the middle of 
-// a file not opened yet
-// Or maybe: have a function with offset and size, and a wrapper macro without
-// Also - does it make sence to load into static buffer? I don't think so
-
-// Third decision - load is only for allocation
-
-/*! \brief Read a block from a file descriptor, to a static buffer.
- * \param fd File descriptor
- * \param buffer Buffer to store the data
- * \param size Number of bytes to read
- *             Buffer must offer at least that many bytes of storage
- * \param pos File offset to read from. <0 means - from current position
- * \return If >0 : Number of bytes actually read
- *         If <=0 : One of the LH_FILE_* constants
- */
-ssize_t lh_read_at(int fd, uint8_t *buffer, ssize_t size, off_t pos);
-
-#define lh_read(fd,buffer,size,...) lh_read_at(fd,buffer,size,##__VA_ARGS_,-1)
-
-#define lh_read_fp(fp,buffer,size,...) lh_read_at(fileno(fp),buffer,size,##__VA_ARGS_,-1)
-
-/*! \brief Read the entire file from a path, allocate the buffer for the data
- * \param path File path
- * \param bufp Pointer to the uint8_t variable where the buffer will be stored
- * \return The length of the read data
- */
-ssize_t lh_load(const char *path, uint8_t **bufp);
-
-/*
-TODO:
-lh_read_append - read a chunk of data, append to existing data in the buffer
-lh_load_segment - read a file from a path, but only a chunk at given position and length
-
-lh_read_buf - higher-level functions that use lh_buffer_t
-lh_load_buf
-*/
-
-#endif
 
 
 
