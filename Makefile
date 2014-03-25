@@ -1,7 +1,19 @@
 CC=gcc -std=gnu99
 CFLAGS=-g -pg
+
 LIBSSOL=-lsocket -lnsl -lmd5
-LIBS=-lz -lpng -lcrypto #$(LIBSSOL)
+LIBSLIN=-lcrypto
+LIBSCOMMON=-lz -lpng
+
+UNAME := $(shell uname -s)
+ifeq ($(UNAME),SunOS)
+	LIBS=$(LIBCOMMON) $(LIBSSOL)
+endif
+
+ifeq ($(UNAME),Linux)
+	LIBS=$(LIBCOMMON) $(LIBSLIN)
+endif
+
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=1
 CONFIG=-include config.h
 AR=ar

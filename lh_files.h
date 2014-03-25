@@ -121,17 +121,17 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
             }                                                           \
             rlen; } )
 
-#define lh_fpread_static(fp,...) lh_read_static(fileno(fp),__VA_ARGS__)
-#define lh_fpread_alloc(fp,...)  lh_read_alloc(fileno(fp),__VA_ARGS__)
-#define lh_fpread_buf(fp,...)    lh_read_buf(fileno(fp),__VA_ARGS__)
+#define lh_fread_static(fp,...) lh_read_static(fileno(fp),__VA_ARGS__)
+#define lh_fread_alloc(fp,...)  lh_read_alloc(fileno(fp),__VA_ARGS__)
+#define lh_fread_buf(fp,...)    lh_read_buf(fileno(fp),__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
 
 ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...);
 ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
 
-#define lh_write(...)            lh_write_at(##__VA_ARGS__,-1,-1)
-#define lh_write_buf(...)        lh_write_buf_at(##__VA_ARGS__,-1,-1)
+#define lh_write(...)           lh_write_at(##__VA_ARGS__,-1,-1)
+#define lh_write_buf(...)       lh_write_buf_at(##__VA_ARGS__,-1,-1)
 
 #define lh_save(path, ...) ( {                                          \
             int fd = lh_open_write(path);                               \
@@ -151,80 +151,57 @@ ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...)
             }                                                           \
             wlen; } )
 
-#define lh_fwrite(fp,...)        lh_write(fileno(fp),__VA_ARGS__)
-#define lh_fwrite_buf(fp,...)    lh_write_buf(fileno(fp),__VA_ARGS__)
-
-
-
-
-
-
-
-
-
-
-#if 0
+#define lh_fwrite(fp,...)       lh_write(fileno(fp),__VA_ARGS__)
+#define lh_fwrite_buf(fp,...)   lh_write_buf(fileno(fp),__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @name Writing files
 
-/*! \brief Write a data block to a file, creating a new file in process
- * \param path File path
- * \param data Buffer with the data to write to the file
- * \param size Size to write, in bytes
- * \return 0 on success, -1 on error */
-int lh_write_file(const char *path, const uint8_t *data, ssize_t size);
+ssize_t lh_append(int fd, uint8_t *buf, ssize_t length);
+ssize_t lh_pappend(const char *path, uint8_t *buf, ssize_t length);
+#define lh_fappend(fp, buf, length) lh_append(fileno(fp), buf, length)
 
-/*! \brief Write a data block to a file at specified position and keeping other data
- * \param path File path
- * \param pos Absolute position in the file to start writing at
- * \param data Buffer with the data to write to the file
- * \param size Size to write, in bytes
- * \return 0 on success, -1 on error */
-int lh_write_file_at(const char *path, off_t pos, const uint8_t *data, ssize_t size);
+ssize_t lh_append_buf_l(int fd, lh_buf_t *bo, ssize_t length, ...);
+ssize_t lh_pappend_buf_l(const char *path, lh_buf_t *bo, ssize_t length, ...);
 
-/*! \brief Write a data block at current writing position in an opened file
- * \param fp File descriptor, must be opened for writing
- * \param data Buffer with the data to write to the file
- * \param size Size to write, in bytes
- * \return 0 on success, -1 on error */
-int lh_write_fp(FILE *fp, const uint8_t *data, ssize_t size);
+#define lh_append_buf(fd, bo, ...) lh_append_buf_l(fd, bo, ##__VA_ARGS__, -1)
+#define lh_pappend_buf(path, bo, ...) lh_pappend_buf_l(path, bo, ##__VA_ARGS__, -1)
+#define lh_fappend_buf(fp, bo, ...) lh_append_buf_l(fileno(fp), bo, ##__VA_ARGS)
 
-/*! \brief Write a data block at specified position in an opened file
- * \param fp File descriptor, must be opened for writing
- * \param pos Absolute position in the file to start writing at
- * \param data Buffer with the data to write to the file
- * \param size Size to write, in bytes
- * \return 0 on success, -1 on error */
-int lh_write_fp_at(FILE *fp, off_t pos, const uint8_t *data, ssize_t size);
-
-/*! \brief Append a data block to an existing file, or create new if does not exist
- * \param path File path
- * \param data Buffer with the data to write to the file
- * \param size Size to write, in bytes
- * \return 0 on success, -1 on error */
-int lh_append_file(const char *path, const uint8_t *data, ssize_t size);
+////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LH_DECLARE_SHORT_NAMES
 
-#define fopen_r(path,size)  lh_open_file_read(path,size)
-#define fopen_w(path)       lh_open_file_write(path)
-#define fopen_u(path,size)  lh_open_file_update(path,size)
-#define fopen_a(path,size)  lh_open_file_append(path,size)
+#define filesize        lh_filesize
+#define filesize_p      lh_filesize_path
+#define filesize_fp     lh_filesize_fp
 
-#define read_fp(fp,size,buffer)         lh_read_fp(fp,size,buffer)
-#define read_fp_at(fp,pos,size,buffer)  lh_read_fp_at(fp,pos,size,buffer)
-#define load_fp(fp,sizep)               lh_load_fp(fp,sizep)
-#define read_file(path,size,buffer)     lh_read_file(path,size,buffer)
-#define read_file_at(path,pos,size,buffer)  lh_read_file_at(path,pos,size,buffer)
-#define load_file(path,sizep)           lh_load_file(path,sizep)
+#define open_r          lh_open_read
+#define open_w          lh_open_write
+#define open_u          lh_open_update
+#define open_a          lh_open_append
 
-#define write_file(path,data,size)      lh_write_file(path,data,size)
-#define write_file_at(path,pos,data,size)   lh_write_file(path,pos,data,size)
-#define write_fp(fp,data,size)          lh_write_fp(fp,data,size)
-#define write_fp_at(fp,pos,data,size)   lh_write_fp(fp,pos,data,size)
-#define append_file(path,data,size)     lh_append_file(path,data,size)
+#define read_s          lh_read_static
+#define read_a          lh_read_alloc
+#define read_b          lh_read_buf
+#define fread_s         lh_fread_static
+#define fread_a         lh_fread_alloc
+#define fread_b         lh_fread_buf
+#define load_s          lh_load_static
+#define load_a          lh_load_alloc
+#define load_b          lh_load_buf
 
-#endif
+#define write_s         lh_write
+#define write_b         lh_write_buf
+#define fwrite_s        lh_fwrite
+#define fwrite_b        lh_fwrite_buf
+#define save_s          lh_save
+#define save_b          lh_save_buf
+
+#define append_s        lh_append
+#define append_b        lh_append_buf
+#define pappend_s       lh_path_append
+#define pappend_b       lh_path_append_buf
+#define fappend_s       lh_fappend
+#define fappend_b       lh_fappend_buf
 
 #endif

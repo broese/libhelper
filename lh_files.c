@@ -250,22 +250,29 @@ ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...)
     return wbytes;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-
-int lh_append_file(const char *path, const uint8_t *data, ssize_t size) {
-    FILE * fp = lh_open_file_append(path, NULL);
-    if (!fp) return -1;
-
-    int res = lh_write_fp(fp, data, size);
-    fclose(fp);
-
-    return res;
+ssize_t lh_append(int fd, uint8_t *buf, ssize_t length) {
+    if (lseek(fd, 0, SEEK_END)<0) return LH_FILE_ERROR;
+    return lh_write_at(fd, buf, length, -1);
 }
 
+ssize_t lh_pappend(const char *path, uint8_t *buf, ssize_t length) {
+    int fd = lh_open_append(path, NULL);
+    ssize_t result = lh_write_at(fd, buf, length, -1);
+    close(fd);
+    return result;
+}
 
-#endif
+ssize_t lh_append_buf_l(int fd, lh_buf_t *bo, ssize_t length, ...) {
+    if (lseek(fd, 0, SEEK_END)<0) return LH_FILE_ERROR;
+    return lh_write_buf_at(fd, bo, length, -1);
+}
 
-
-
+ssize_t lh_pappend_buf_l(const char *path, lh_buf_t *bo, ssize_t length, ...) {
+    int fd = lh_open_append(path, NULL);
+    ssize_t result = lh_write_buf_at(fd, bo, length, -1);
+    close(fd);
+    return result;
+}
 
