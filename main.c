@@ -933,6 +933,8 @@ int testshit() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+void lh_dirwalk_test(const char * basedir);
+
 int main(int ac, char **av) {
 #ifdef HAVE_MTRACE
 #if DEBUG_MEMORY
@@ -961,9 +963,7 @@ int main(int ac, char **av) {
     */
 
     //// lh_files.h
-    LH_HERE;
-    fail += test_files();
-    LH_HERE;
+    //fail += test_files();
     
     //// lh_net.h
     //// lh_event.h
@@ -971,7 +971,7 @@ int main(int ac, char **av) {
     //test_event2();
     //test_dns();
 
-    //lh_dirwalk_test(av[1]?av[1]:".");
+    lh_dirwalk_test(av[1]?av[1]:".");
 
     //testshit();
 

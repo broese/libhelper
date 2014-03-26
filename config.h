@@ -9,9 +9,10 @@
 #define HAVE_BUILTIN_BSWAP64 1
 
 #define HAVE_QSORT_R 1
-#define HAVE_OPENSSL 1
-
+#define HAVE_STRNLEN 1
 #define HAVE_BLKGETSIZE64 1
+
+#define HAVE_OPENSSL 1
 
 #endif
 

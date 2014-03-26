@@ -18,8 +18,8 @@ DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=1
 CONFIG=-include config.h
 AR=ar
 
-#LIBOBJ=lh_image.o lh_compress.o lh_net.o lh_event.o lh_dir.o lh_files.o
-LIBOBJ=lh_debug.o lh_files.o lh_net.o 
+#LIBOBJ=lh_image.o lh_compress.o lh_net.o lh_event.o
+LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_dir.o
 
 all: test libhelper.a
 

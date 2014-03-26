@@ -9,6 +9,8 @@
 
 #include "lh_dir.h"
 
+#define LH_DIR_ALLOCGRAN 256
+
 // object representing a single file (or general: a directory entry)
 // a directory object maintains a list of these objects
 typedef struct lh_dwfile {
@@ -34,7 +36,7 @@ typedef struct lh_dwdir {
 } lh_dwdir;
 
 // dirwalker object
-typedef struct lh_dirwalk {
+struct lh_dirwalk {
     ssize_t         name_max;   // max size of file name, obtained from pathconf
     ssize_t         path_max;   // max size of path, obtained from pathconf
 
@@ -42,7 +44,7 @@ typedef struct lh_dirwalk {
     int             flags;      // flags supplied to lh_dirwalk_create
 
     lh_dwdir      * current;    // currently processed directory
-} lh_dirwalk;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,9 +67,16 @@ lh_dirwalk * lh_dirwalk_create(const char * basepath, int flags) {
     //NOTE: ds->path is NULL for the top dwdir object
 
     // allocate just one object in our file list - our basepath
-    lh_dwfile * df = lh_array_new(ds->files, ds->nfiles);
+    lh_dwfile * df = &(lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN));
 
+#ifdef HAVE_STRNLEN
     ssize_t nlen = strnlen(basepath, dw->path_max);
+#else
+    ssize_t nlen = strlen(basepath);
+    if (nlen > dw->path_max)
+        LH_ERROR(NULL,"Path too long: %s\n",basepath);
+#endif
+
     lh_alloc_buf(df->name, nlen+1);
     memcpy(df->name, basepath, nlen);
     do {
@@ -130,6 +139,8 @@ void lh_dirwalk_dump(lh_dirwalk * dw) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef HAVE_QSORT_R
+
 static int lh_dirwalk_cmp(const void *pa, const void *pb, void *priv) {
     lh_dwfile *a =(lh_dwfile *)pa;
     lh_dwfile *b =(lh_dwfile *)pb;
@@ -149,6 +160,24 @@ static int lh_dirwalk_cmp(const void *pa, const void *pb, void *priv) {
     else
         return strcmp(a->name, b->name);
 }
+
+#else
+
+static int lh_dirwalk_cmp(const void *pa, const void *pb) {
+    lh_dwfile *a =(lh_dwfile *)pa;
+    lh_dwfile *b =(lh_dwfile *)pb;
+
+    // sort directories first
+    if ( S_ISDIR(a->st->st_mode) > S_ISDIR(b->st->st_mode) ) return -1;
+    if ( S_ISDIR(a->st->st_mode) < S_ISDIR(b->st->st_mode) ) return 1;
+    
+    // sort files alphabetically
+    assert(a->name);
+    assert(b->name);
+    return strcmp(a->name, b->name);
+}
+
+#endif
 
 static int lh_dirwalk_readdir(lh_dirwalk *dw) {
     lh_dwdir *ds = dw->current;
@@ -181,7 +210,7 @@ static int lh_dirwalk_readdir(lh_dirwalk *dw) {
                 continue;
         
         // allocate a new entry in the file list
-        lh_dwfile * newfile = lh_array_new(ds->files, ds->nfiles);
+        lh_dwfile * newfile = &(lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN));
 
         newfile->name = strdup(name);
 
@@ -198,9 +227,14 @@ static int lh_dirwalk_readdir(lh_dirwalk *dw) {
     }
 
     // sort the files if necessary
-    if (ds->files && dw->flags&LH_DW_SORT)
+    if (ds->files && dw->flags&LH_DW_SORT) {
+#ifdef HAVE_QSORT_R
         qsort_r(ds->files, ds->nfiles, sizeof(*ds->files),
                 lh_dirwalk_cmp, (void *)(intptr_t)dw->flags);
+#else
+        qsort(ds->files, ds->nfiles, sizeof(*ds->files), lh_dirwalk_cmp);
+#endif
+    }
 
     // the directory is now initialized
     ds->init = 1;
