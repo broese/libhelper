@@ -50,7 +50,7 @@ short *lh_poll_mode(lh_pollarray *pa, int fd) {
 
 int lh_poll(lh_pollarray *pa, int timeout) {
     int res = poll(pa->poll, pa->nfd, timeout);
-    if (res<0) LH_ERROR(-1, "poll() failed\n");
+    if (res<0) LH_ERROR(-1, "poll() failed");
 
     int i;
     for(i=0; i<pa->nfd; i++)
@@ -61,13 +61,23 @@ int lh_poll(lh_pollarray *pa, int timeout) {
 
 lh_polldata * lh_poll_getnext(lh_pollarray *pa, int *pos, int group, short mode) {
     assert(pa);
-
     for(;*pos<pa->nfd; (*pos)++) {
         lh_polldata *pd = pa->data + *pos;
         if (pd->group == group && (pd->state&mode)) {
             (*pos)++;
             return pd;
         }            
+    }
+    return NULL;
+}
+
+lh_polldata * lh_poll_getfirst(lh_pollarray *pa, int group, short mode) {
+    assert(pa);
+
+    for(int i=0; i<pa->nfd; i++) {
+        lh_polldata *pd = pa->data+i;
+        if (pd->group==group && (pd->state&mode))
+            return pd;
     }
     return NULL;
 }
@@ -92,6 +102,32 @@ int lh_poll_getall(lh_pollarray *pa, int group, short mode, lh_polldata **pdp) {
     return count;
 }
 
+void lh_poll_dump(lh_pollarray *pa) {
+    int i;
+    printf("POLLARRAY %p\n",pa);
+
+    for(i=0; i<pa->nfd; i++) {
+        printf("FD=%2d\n"
+               "  events=%04x revents=%04x\n"
+               "  group=%d fd=%d state=%04x\n"
+               "  priv=%p %s\n",
+               pa->poll[i].fd,pa->poll[i].events,pa->poll[i].revents,
+               pa->data[i].group,pa->data[i].fd,pa->data[i].state,
+               pa->data[i].priv, (pa->data[i].group==3) ? "(lh_conn)" : "");
+
+        if (pa->data[i].group==3) {
+            lh_conn *conn = pa->data[i].priv;
+            printf("    pa=%p fd=%d status=%d priv=%p\n"
+                   "    rbuf(%p %d %d gran=%d)\n"
+                   "    wbuf(%p %d %d gran=%d)\n",
+                   conn->pa, conn->fd, conn->status, conn->priv,
+                   conn->rbuf.data_ptr,conn->rbuf.data_ridx,conn->rbuf.data_cnt,conn->rbuf.data_gran,
+                   conn->wbuf.data_ptr,conn->wbuf.data_ridx,conn->wbuf.data_cnt,conn->wbuf.data_gran);
+        }
+               
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 lh_conn * lh_conn_add(lh_pollarray *pa, int fd, int group, void *priv) {
@@ -103,6 +139,9 @@ lh_conn * lh_conn_add(lh_pollarray *pa, int fd, int group, void *priv) {
     conn->fd = fd;
     conn->status = 0;
     conn->priv = priv;
+
+    conn->wbuf.data_gran = LH_BUF_DEFAULT_GRAN;
+    conn->rbuf.data_gran = LH_BUF_DEFAULT_GRAN;
 
     lh_poll_add(pa, fd, POLLIN, group, conn);
 
@@ -131,9 +170,6 @@ void lh_conn_write(lh_conn *conn, uint8_t *data, ssize_t length) {
     assert(data);
     assert(!(conn->status&CONN_STATUS_LOCAL_EOF));
 
-    if (!conn->wbuf.data_gran) // granularity was not specified - use default
-        conn->wbuf.data_gran = LH_BUF_DEFAULT_GRAN;
-
     // copy data into write buffer, allocating as necessary
     ssize_t ridx = conn->wbuf.data_cnt;
     lh_arr_add(AR(conn->wbuf.data),conn->wbuf.data_gran, length);
@@ -142,7 +178,11 @@ void lh_conn_write(lh_conn *conn, uint8_t *data, ssize_t length) {
     // try to send as much as possible
     ssize_t result = lh_write_buf(conn->fd, &conn->wbuf );
 
-    //FIXME: handle errors
+    if (result == LH_FILE_INVALID && result == LH_FILE_ERROR) {
+        conn->status = CONN_STATUS_ERROR;
+        //FIXME: handle errors
+        return;
+    }
 
     // if not all data could be sent, set POLLOUT, so this buffer can
     // be transmitted asynchronously
@@ -165,10 +205,11 @@ void lh_conn_write_eof(lh_conn *conn) {
 void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
     assert(pa);
     int pos=0;
-
     lh_polldata *pd;
+
     while (pd=lh_poll_getnext(pa, &pos, group, POLLIN)) {
-        lh_conn *conn = (lh_conn *)conn->priv;
+        lh_conn *conn = (lh_conn *)pd->priv;
+        printf("conn:%p\n",conn);
         ssize_t rbytes = lh_read_buf(conn->fd, &conn->rbuf);
        
         switch (rbytes) {
@@ -199,7 +240,7 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
     }
 
     while (pd=lh_poll_getnext(pa, &pos, group, POLLOUT)) {
-        lh_conn *conn = (lh_conn *)conn->priv;
+        lh_conn *conn = (lh_conn *)pd->priv;
         ssize_t wbytes = lh_write_buf(conn->fd, &conn->wbuf);
         switch (wbytes) {
             case LH_FILE_INVALID:

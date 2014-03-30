@@ -80,7 +80,12 @@ int lh_connect_tcp4(uint32_t ip, uint16_t port) {
     };
 
     if (connect(s, (struct sockaddr *)&sa, sizeof(sa)) != 0) {
-        LH_ERROR(-1, "%s: bind failed", __func__);
+        LH_ERROR(-1, "%s: connect failed", __func__);
+    }
+
+    if (fcntl(s, F_SETFL, O_NONBLOCK) < 0) {
+        close(s);
+        LH_ERROR(-1,"Failed to set O_NONBLOCK on client socket");
     }
 
     return s;
@@ -109,4 +114,31 @@ uint32_t lh_dns_addr_ipv4(const char *hostname) {
     freeaddrinfo(result);
 
     return addr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int static inline lh_net_setflags(int fd, int set, int flag) {
+    int opts;
+
+    opts = fcntl(fd,F_GETFL);
+    if (opts < 0) LH_ERROR(-1,"fcntl(F_GETFL) failed");
+
+    if (set)
+        opts |= flag;
+    else
+        opts &= (~flag);
+
+    if (fcntl(fd,F_SETFL,opts) < 0)
+        LH_ERROR(-1,"fcntl(F_SETFL) failed");    
+
+    return 0;
+}
+
+int lh_net_nonblocking(int fd) {
+    return lh_net_setflags(fd,1,O_NONBLOCK);
+}
+
+int lh_net_blocking(int fd) {
+    return lh_net_setflags(fd,0,O_NONBLOCK);
 }

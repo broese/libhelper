@@ -42,8 +42,9 @@ short *lh_poll_mode(lh_pollarray *pa, int fd);
 int lh_poll(lh_pollarray *pa, int timeout);
 
 lh_polldata * lh_poll_getnext(lh_pollarray *pa, int *pos, int group, short mode);
+lh_polldata * lh_poll_getfirst(lh_pollarray *pa, int group, short mode);
 int lh_poll_getall(lh_pollarray *pa, int group, short mode, lh_polldata **pdp);
-
+void lh_poll_dump(lh_pollarray *pa);
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -67,7 +67,8 @@ via exit(1).
             __FILE__,__LINE__,__func__,##__VA_ARGS__);
 
 #define LH_HERE                                                     \
-    fprintf(stderr, "%s:%d (%s)\n", __FILE__,__LINE__,__func__);
+    fprintf(stderr, "%s:%d (%s)\n", __FILE__,__LINE__,__func__);    \
+    fflush(stderr);
 
 ////////////////////////////////////////////////////////////////////////////////
 

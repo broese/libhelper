@@ -98,7 +98,7 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
             int fd = lh_open_read(path, NULL);                          \
             ssize_t rlen = LH_FILE_ERROR;                               \
             if (fd >= 0) {                                              \
-                rlen = lh_read_static_at(fd, ##__VA_ARGS__,-1,-1);      \
+                rlen = lh_read_static_at(fd,__VA_ARGS__,-1,-1);         \
                 close(fd);                                              \
             }                                                           \
             rlen; } )
@@ -107,7 +107,7 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
             int fd = lh_open_read(path, NULL);                          \
             ssize_t rlen = LH_FILE_ERROR;                               \
             if (fd >= 0) {                                              \
-                rlen = lh_read_alloc_at(fd, ##__VA_ARGS__,-1,-1);       \
+                rlen = lh_read_alloc_at(fd,__VA_ARGS__,-1,-1);          \
                 close(fd);                                              \
             }                                                           \
             rlen; } )
@@ -116,7 +116,7 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
             int fd = lh_open_read(path, NULL);                          \
             ssize_t rlen = LH_FILE_ERROR;                               \
             if (fd >= 0) {                                              \
-                rlen = lh_read_buf_at(fd, ##__VA_ARGS__,-1,-1);         \
+                rlen = lh_read_buf_at(fd,__VA_ARGS__,-1,-1);            \
                 close(fd);                                              \
             }                                                           \
             rlen; } )
@@ -137,7 +137,7 @@ ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...)
             int fd = lh_open_write(path);                               \
             ssize_t wlen = LH_FILE_ERROR;                               \
             if (fd >= 0) {                                              \
-                wlen = lh_write_at(fd, ##__VA_ARGS__,-1,-1);            \
+                wlen = lh_write_at(fd,__VA_ARGS__,-1,-1);               \
                 close(fd);                                              \
             }                                                           \
             wlen; } )
@@ -146,7 +146,7 @@ ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...)
             int fd = lh_open_write(path);                               \
             ssize_t wlen = LH_FILE_ERROR;                               \
             if (fd >= 0) {                                              \
-                wlen = lh_write_buf_at(fd, ##__VA_ARGS__,-1,-1);        \
+                wlen = lh_write_buf_at(fd,__VA_ARGS__,-1,-1);           \
                 close(fd);                                              \
             }                                                           \
             wlen; } )
