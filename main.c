@@ -27,6 +27,7 @@
 #include "lh_debug.h"
 #include "lh_files.h"
 #include "lh_net.h"
+#include "lh_event.h"
 
 #if 0
 #include "lh_event.h"
@@ -622,128 +623,7 @@ int test_bprintf() {
     return fail;
 }
 
-
-#if 0
 ////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-    uint8_t * rbuf;
-    ssize_t   rlen;
-    uint8_t * wbuf;
-    ssize_t   wlen;
-} client;
-
-void process_requests(client *c, int finalize) {
-    int linecount=0;
-    int lastpos=-1;
-
-    // find the location of the last newline in the buffer
-    int i;
-    for(i=0; i<c->rlen; i++) {
-        if (c->rbuf[i] == 0x0a) {
-            lastpos = i;
-            linecount++; // count lines
-        }
-    }
-
-    // delete all counted lines from the receive buffer
-    lh_array_delete_range(c->rbuf, c->rlen, 0, lastpos+1);
-
-    if (finalize) {
-        c->rlen = 0; //delete everything
-        linecount++;
-    }
-
-    // write response
-    bprintf(c->wbuf, c->wlen, "Test Server: received %d lines\n",linecount);
-    if (finalize) bprintf(c->wbuf, c->wlen, "*** Good Bye ***\n");
-}
-
-int test_event() {
-    printf("\n\n====== Testing event framework ======\n");
-    int fail = 0, f;
-
-    int ss = lh_listen_tcp4_any(23456);
-    if (ss<0) {
-        printf("-----\ntotal: %s\n", PASSFAIL(0));
-        return 1;
-    }
-
-    lh_pollarray_create(pa);
-    lh_pollgroup_create(server,&pa);
-    lh_pollgroup_create(clients,&pa);
-
-    lh_poll_add(&server, ss, MODE_R, NULL);
-
-    int stay = 1, i;
-    int maxcount = 100;
-    while(stay && maxcount>0) {
-        lh_poll(&pa, 1000);
-        int fd;
-        FILE *fp;
-
-        while ((fd=lh_poll_next_readable(&server,NULL,NULL))>0) {
-            // accept new connection
-            struct sockaddr_in cadr;
-            int cl = lh_accept_tcp4(fd, &cadr);
-            if (cl < 0) break;
-            printf("Accepted from %s:%d\n",
-                   inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
-
-            // Create a FILE*
-            FILE * clfp = fdopen(cl, "r+");
-            if (!clfp) LH_ERROR(1,"Failed to fdopen");
-
-            fprintf(clfp, "Welcome to the server!\n");
-            fflush(clfp);
-
-            // create a new client instance
-            CREATE(client, c);
-            lh_poll_add_fp(&clients, clfp, MODE_R, c);
-        }
-
-        client * c;
-        while ((fd=lh_poll_next_readable(&clients,&fp,(void **)&c))>0) {
-            int res = lh_poll_read(fd, &c->rbuf, &c->rlen, 65536);
-            switch (res) {
-            case LH_EVSTATUS_EOF:
-                process_requests(c,1);
-                break;
-            case LH_EVSTATUS_OK:
-            case LH_EVSTATUS_WAIT:
-                process_requests(c,0);
-                break;
-            case LH_EVSTATUS_ERROR:
-                fprintf(stderr,"error on socket %d, closing\n",fd);
-                if (c->rbuf) free(c->rbuf);
-                if (c->wbuf) free(c->wbuf);
-                free(c);
-                lh_poll_remove(&pa, fd);
-                break;
-            }
-
-            // do we have data to send back to the client?
-            if (c->wlen > 0) {
-                fprintf(stderr,"Sending response to socket %d\n",fd);
-                switch(lh_poll_write_once(fd, c->wbuf, &c->wlen)) {
-                case LH_EVSTATUS_ERROR:
-                    if (c->rbuf) free(c->rbuf);
-                    if (c->wbuf) free(c->wbuf);
-                    free(c);
-                    lh_poll_remove(&pa, fd);
-                    break;
-                case LH_EVSTATUS_WAIT:
-                    LH_DEBUG("FIXME: handle LH_EVSTATUS_WAIT\n");
-                    // remaining data might be send later if we have another request
-                    break;
-                }
-            }
-        }
-    }
-    
-    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
-    return fail;
-}
 
 ssize_t process_requests2(lh_conn *conn) {
     int linecount=0;
@@ -751,26 +631,30 @@ ssize_t process_requests2(lh_conn *conn) {
 
     // find the location of the last newline in the buffer
     int i;
-    for(i=0; i<conn->r.len; i++) {
-        if (conn->r.ptr[i] == 0x0a) {
+    uint8_t *ptr = conn->rbuf.data_ptr + conn->rbuf.data_ridx;
+    int lim = conn->rbuf.data_cnt - conn->rbuf.data_ridx;
+    for(i=0; i<lim; i++) {
+        if (ptr[i] == 0x0a) {
             lastpos = i;
             linecount++; // count lines
         }
     }
 
     // write response
-    bprintf(conn->w.ptr, conn->w.len, "Test Server: received %d lines\n",linecount);
+    char buf[4096];
+    int slen = sprintf(buf, "Test Server: received %d lines\n",linecount);
+    lh_conn_write(conn, buf, slen);
 
-    switch(conn->status) {
-    case LH_EVSTATUS_EOF:
-        bprintf(conn->w.ptr, conn->w.len, "*** Good Bye ***\n");
-        return -1;
-    case LH_EVSTATUS_ERROR:
-        return -1;
+    if (conn->status & CONN_STATUS_REMOTE_EOF) {
+        slen = sprintf(buf, "Good Bye\n",linecount);
+        lh_conn_write(conn, buf, slen);
     }
 
     return lastpos+1;
 }
+
+#define GROUP_SERVER 0
+#define GROUP_CLIENTS 1
 
 int test_event2() {
     printf("\n\n====== Testing event framework (L3) ======\n");
@@ -782,59 +666,38 @@ int test_event2() {
         return 1;
     }
 
-    lh_pollarray_create(pa);
-    lh_pollgroup_create(server,&pa);
-    lh_pollgroup_create(clients,&pa);
+    lh_pollarray pa;
+    lh_clear_obj(pa);
 
-    lh_poll_add(&server, ss, MODE_R, NULL);
+    lh_poll_add(&pa, ss, POLLIN, GROUP_SERVER, NULL);
 
     int stay = 1, i;
     int maxcount = 100;
 
     while(stay && --maxcount>0) {
         lh_poll(&pa, 1000);
-        int fd;
-        FILE *fp;
-
-        while ((fd=lh_poll_next_readable(&server,NULL,NULL))>0) {
+        lh_polldata *pd;
+        int pos=0;
+        while ( pd=lh_poll_getnext(&pa, &pos, GROUP_SERVER, POLLIN)) {
             // accept new connection
             struct sockaddr_in cadr;
-            int cl = lh_accept_tcp4(fd, &cadr);
+            int cl = lh_accept_tcp4(pd->fd, &cadr);
             if (cl < 0) break;
             printf("Accepted from %s:%d\n",
                    inet_ntoa(cadr.sin_addr),ntohs(cadr.sin_port));
 
             // create a new lh_conn
-            lh_conn_add(&clients, cl, NULL);
+            lh_conn_add(&pa, cl, GROUP_CLIENTS, NULL);
         }
 
-        lh_conn_process(&clients, process_requests2);
-        int *fds = lh_conn_cleanup(&clients);
-        if (fds) {
-            for(i=0; fds[i]>0; i++) {
-                printf("Removing client fd=%d\n",fds[i]);
-                close(fds[i]);
-                lh_conn_remove(&clients, fds[i]);
-            }
-            free(fds);
-        }
+        lh_conn_process(&pa, GROUP_CLIENTS, process_requests2);
     }
 
-    free(clients.r);
-    free(clients.w);
-    free(clients.e);
-    
-    free(server.r);
-    free(server.w);
-    free(server.e);
-    
-    free(pa.poll);
-    free(pa.data);
-    
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
 
+#if 0
 #define TEST_DNS(name, addr) {                       \
         int f=0;                                     \
         f = (addr != dns_addr_ipv4(name));           \
@@ -968,10 +831,10 @@ int main(int ac, char **av) {
     //// lh_net.h
     //// lh_event.h
     //test_event();
-    //test_event2();
+    test_event2();
     //test_dns();
 
-    lh_dirwalk_test(av[1]?av[1]:".");
+    //lh_dirwalk_test(av[1]?av[1]:".");
 
     //testshit();
 
