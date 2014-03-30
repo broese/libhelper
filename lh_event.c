@@ -118,8 +118,8 @@ void lh_poll_dump(lh_pollarray *pa) {
         if (pa->data[i].group==3) {
             lh_conn *conn = pa->data[i].priv;
             printf("    pa=%p fd=%d status=%d priv=%p\n"
-                   "    rbuf(%p %d %d gran=%d)\n"
-                   "    wbuf(%p %d %d gran=%d)\n",
+                   "    rbuf(%p %zd %zd gran=%d)\n"
+                   "    wbuf(%p %zd %zd gran=%d)\n",
                    conn->pa, conn->fd, conn->status, conn->priv,
                    conn->rbuf.data_ptr,conn->rbuf.data_ridx,conn->rbuf.data_cnt,conn->rbuf.data_gran,
                    conn->wbuf.data_ptr,conn->wbuf.data_ridx,conn->wbuf.data_cnt,conn->wbuf.data_gran);
@@ -209,7 +209,6 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
 
     while (pd=lh_poll_getnext(pa, &pos, group, POLLIN)) {
         lh_conn *conn = (lh_conn *)pd->priv;
-        printf("conn:%p\n",conn);
         ssize_t rbytes = lh_read_buf(conn->fd, &conn->rbuf);
        
         switch (rbytes) {
