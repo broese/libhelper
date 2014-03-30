@@ -90,9 +90,9 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
  *            is not seekable, it will generate an error.
  */
 
-#define lh_read_static(...) lh_read_static_at(##__VA_ARGS__,-1,-1)
-#define lh_read_alloc(...)  lh_read_alloc_at(##__VA_ARGS__,-1,-1)
-#define lh_read_buf(...)    lh_read_buf_at(##__VA_ARGS__,-1,-1)
+#define lh_read_static(...) lh_read_static_at(__VA_ARGS__,-1,-1)
+#define lh_read_alloc(...)  lh_read_alloc_at(__VA_ARGS__,-1,-1)
+#define lh_read_buf(...)    lh_read_buf_at(__VA_ARGS__,-1,-1)
 
 #define lh_load_static(path, ...) ( {                                   \
             int fd = lh_open_read(path, NULL);                          \
@@ -130,8 +130,8 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
 ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...);
 ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...);
 
-#define lh_write(...)           lh_write_at(##__VA_ARGS__,-1,-1)
-#define lh_write_buf(...)       lh_write_buf_at(##__VA_ARGS__,-1,-1)
+#define lh_write(...)           lh_write_at(__VA_ARGS__,-1,-1)
+#define lh_write_buf(...)       lh_write_buf_at(__VA_ARGS__,-1,-1)
 
 #define lh_save(path, ...) ( {                                          \
             int fd = lh_open_write(path);                               \
