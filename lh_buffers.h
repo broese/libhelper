@@ -236,10 +236,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define _lh_arr_add(ptr,cnt,gran,num)            \
-    lh_arr_resize(ptr,cnt,((num)+(cnt)),gran)
+    lh_arr_resize(ptr,cnt,gran,((num)+(cnt)))
 
 #define _lh_arr_add_c(ptr,cnt,gran,num)          \
-    lh_arr_resize_c(ptr,cnt,((num)+(cnt)),gran)
+    lh_arr_resize_c(ptr,cnt,gran,((num)+(cnt)))
 
 /*! \brief Add a number of elements to a resizable array
  * \param ptr Pointer variable
