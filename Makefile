@@ -1,25 +1,20 @@
 CC=gcc -std=gnu99
 CFLAGS=-g -pg
-
-LIBSSOL=-lsocket -lnsl -lmd5
-LIBSLIN=-lcrypto
-LIBSCOMMON=-lz -lpng
-
-UNAME := $(shell uname -s)
-ifeq ($(UNAME),SunOS)
-	LIBS=$(LIBCOMMON) $(LIBSSOL)
-endif
-
-ifeq ($(UNAME),Linux)
-	LIBS=$(LIBCOMMON) $(LIBSLIN)
-endif
-
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=1
 CONFIG=-include config.h
 AR=ar
 
-#LIBOBJ=lh_image.o lh_compress.o lh_net.o lh_event.o
-LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_dir.o
+LIBS=-lz -lpng
+UNAME := $(shell uname -s)
+ifeq ($(UNAME),SunOS)
+	LIBS += -lsocket -lnsl -lmd5
+endif
+ifeq ($(UNAME),Linux)
+	LIBS += -lcrypto
+endif
+
+#LIBOBJ=lh_image.o lh_compress.o 
+LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_dir.o lh_event.o
 
 all: test libhelper.a
 
