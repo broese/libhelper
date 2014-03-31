@@ -503,7 +503,7 @@ int check_data(uint8_t * data, ssize_t length, const char * hash) {
 }
 
 #define TESTFILE(name,buf,size,hash) {               \
-        int f=check_data(buf,size,hash);             \
+        int f=(size>=0)?check_data(buf,size,hash):1; \
         fail += f;                                   \
         printf("%s: %s\n", #name, PASSFAIL(!f));     \
     }
@@ -518,15 +518,49 @@ int test_files() {
 
     lh_create_buf(buf,16*1024*1024);
     ssize_t sz;
-
     sz = lh_load_static(PRNAME,buf);
     fail += (sz != LH_FILE_INVALID);
-
     sz = lh_load_static(PRNAME,buf,1024);
     TESTFILE(lh_load_static,buf,1024,"7edaf7d57d2d166c0cb96788a447275d");
-    
     sz = lh_load_static(PRNAME,buf,1024,1);
     TESTFILE(lh_load_static,buf,1024,"235f3d4e19505dd5b5de38cf8ed6cf5e");
+
+    // allocated buffer
+    uint8_t * abuf;
+    sz = lh_load_alloc(PRNAME,&abuf);
+    TESTFILE(lh_load_static,abuf,sz,"71D037712F43C91105D83A024A66ED41");
+    free(abuf);
+
+    sz = lh_load_alloc(PRNAME,&abuf,1020);
+    TESTFILE(lh_load_static,abuf,sz,"24F524BEEA54D38EBF31B4B25DB07155");
+    free(abuf);
+
+    sz = lh_load_alloc(PRNAME,&abuf,1020,100);
+    TESTFILE(lh_load_static,abuf,sz,"8DD008F7A0448D4A7DE19B4BD3CB6A9A");
+    free(abuf);
+
+    // reading from an fd
+    int fd = lh_open_read(PRNAME, NULL);
+    sz = lh_read_alloc(fd,&abuf,200,1000);
+    TESTFILE(lh_read_alloc,abuf,sz,"496DEC308BDC12F96CA305BCD7E92D76");
+    free(abuf);
+
+    sz = lh_read_alloc(fd,&abuf,300);
+    TESTFILE(lh_read_alloc,abuf,sz,"76BA99024678EC09641234DA9D6270D6");
+    free(abuf);
+
+    sz = lh_read_alloc(fd,&abuf,400);
+    TESTFILE(lh_read_alloc,abuf,sz,"14BCF897E4075CE84CE27E07C5E9197B");
+    free(abuf);
+
+    sz = lh_read_alloc(fd,&abuf);
+    TESTFILE(lh_read_alloc,abuf,sz,"74901AF51BA354304E479442139D261D");
+    free(abuf);
+
+    sz = lh_read_alloc(fd,&abuf,-1,2000);
+    TESTFILE(lh_read_alloc,abuf,sz,"1FEA7309598182135BDDABE162C1F544");
+    free(abuf);
+
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -826,12 +860,12 @@ int main(int ac, char **av) {
     */
 
     //// lh_files.h
-    //fail += test_files();
+    fail += test_files();
     
     //// lh_net.h
     //// lh_event.h
     //test_event();
-    test_event2();
+    //test_event2();
     //test_dns();
 
     //lh_dirwalk_test(av[1]?av[1]:".");
