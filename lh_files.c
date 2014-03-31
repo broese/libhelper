@@ -68,7 +68,7 @@ static int lh_open_file(const char *path, off_t *sizep, int flags, const char *s
 #endif
    
     int fd;
-    if (flags &= O_CREAT)
+    if (flags & O_CREAT)
         fd = open(path, flags, LH_FILE_CREAT_MODE);
     else
         fd = open(path, flags);
@@ -205,8 +205,11 @@ ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...) {
             LH_ERROR(LH_FILE_ERROR, "Failed to seek to offset %jd", (intmax_t) offset);
     }
 
+    //printf("%s:%d fd=%d buf=%p len=%zd\n",__func__,__LINE__,fd,buf,length);
+
     // attempt to write
     ssize_t wbytes = write(fd, buf, length);
+    //printf("%s:%d res:%d %d %s\n",__func__,__LINE__,wbytes,errno,strerror(errno));
     
     if (wbytes < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
