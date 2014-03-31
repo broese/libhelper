@@ -180,6 +180,18 @@ static inline double lh_bswap_double(double v) {
 #define lh_parse_double_be(ptr) lh_parse_be(ptr,double,8)
 #define lh_parse_double_le(ptr) lh_parse_le(ptr,double,8)
 
+#define lh_parse_varint(ptr) ( {                \
+            uint32_t temp = 0;                  \
+            uint8_t *p = ptr;                   \
+            int s = 0;                          \
+            uint8_t c;                          \
+            do {                                \
+                c=*p++;                         \
+                temp += ((c&0x7f)<<s);          \
+                s += 7;                         \
+            } while (c&0x80);                   \
+            temp; })
+
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -206,6 +218,17 @@ static inline double lh_bswap_double(double v) {
 #define lh_read_float_le(ptr)   lh_read_le(ptr,float,4)
 #define lh_read_double_be(ptr)  lh_read_be(ptr,double,8)
 #define lh_read_double_le(ptr)  lh_read_le(ptr,double,8)
+
+#define lh_read_varint(ptr) ( {                 \
+            uint32_t temp = 0;                  \
+            int s = 0;                          \
+            uint8_t c;                          \
+            do {                                \
+                c=*ptr++;                       \
+                temp += ((c&0x7f)<<s);          \
+                s += 7;                         \
+            } while (c&0x80);                   \
+            temp; })
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,6 +261,7 @@ static inline double lh_bswap_double(double v) {
 #define lh_lread_float_le(ptr,lim,var,fail)   lh_lread_le(ptr,lim,float,var,4,fail)
 #define lh_lread_double_be(ptr,lim,var,fail)  lh_lread_be(ptr,lim,double,var,8,fail)
 #define lh_lread_double_le(ptr,lim,var,fail)  lh_lread_le(ptr,lim,double,var,8,fail)
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -331,6 +355,17 @@ static inline double lh_bswap_double(double v) {
 #define lh_place_double_be(ptr,val)     lh_place_be(ptr,double,8,val)
 #define lh_place_double_le(ptr,val)     lh_place_le(ptr,double,8,val)
 
+#define lh_place_varint(ptr,val) ( {             \
+            uint32_t temp = (uint32_t) val;      \
+            uint8_t *p = ptr;                    \
+            while(temp>0) {                      \
+                *p++ = (temp&0x7f)|0x80;         \
+                temp >>= 7;                      \
+            }                                    \
+            *(p-1) &= 0x7f;                      \
+            p; } )
+                
+
 
 /**
  * @name Write Byte Stream
@@ -349,6 +384,8 @@ static inline double lh_bswap_double(double v) {
 #define lh_write_float_le(ptr,val)      ptr=lh_place_float_le(ptr,val)
 #define lh_write_double_be(ptr,val)     ptr=lh_place_double_be(ptr,val)
 #define lh_write_double_le(ptr,val)     ptr=lh_place_double_le(ptr,val)
+
+#define lh_write_varint(ptr,val)        ptr=lh_place_varint(ptr,val)
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -459,5 +496,6 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #define write_float_le(ptr,val)         lh_write_float_le(ptr,val)
 #define write_double(ptr,val)           lh_write_double_be(ptr,val)
 #define write_double_le(ptr,val)        lh_write_double_le(ptr,val)
+#define write_varint                    lh_write_varint
 
 #endif
