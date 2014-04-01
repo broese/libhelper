@@ -456,7 +456,7 @@ int test_wstream() {
     uint8_t *ptr;
 
     ptr = buf;
-    lh_write_char_be(ptr,0x12);
+    lh_write_char(ptr,0x12);
     lh_write_short_be(ptr,0x3456);
     lh_write_short_le(ptr,0x789A);
     lh_write_int_be(ptr,0xABCDEF01);
@@ -881,8 +881,8 @@ int main(int ac, char **av) {
     
     //// lh_bytes.h
     //fail += test_bswap();
-    fail += test_stream();
-    //fail += test_wstream();
+    //fail += test_stream();
+    fail += test_wstream();
     //fail += test_unpack();
     
 

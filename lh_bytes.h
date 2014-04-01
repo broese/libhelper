@@ -214,8 +214,6 @@ def_lread(double_be,double);
 def_lread(double_le,double);
 
 #define lh_lread_char(p,l,v)        _lh_lread_char(&p,l,&v)
-#define lh_lread_char_be(p,l,v)     _lh_lread_char_be(&p,l,&v)
-#define lh_lread_char_le(p,l,v)     _lh_lread_char_le(&p,l,&v)
 #define lh_lread_short_be(p,l,v)    _lh_lread_short_be(&p,l,&v)
 #define lh_lread_short_le(p,l,v)    _lh_lread_short_le(&p,l,&v)
 #define lh_lread_int_be(p,l,v)      _lh_lread_int_be(&p,l,&v)
@@ -257,149 +255,72 @@ def_lread(double_le,double);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-/**
- * @name Read Limit Bytestream
- * Macros for reading the byte stream with limit checking
- */
+#define PUTLE *p++=(uint8_t)v; v>>=8;
 
-/// \cond
-#define lh_lread_be(ptr,lim,type,var,size,fail) \
-    if (lim-ptr < size) { fail; }               \
-    type var = lh_read_be(ptr,type,size);
-#define lh_lread_le(ptr,lim,type,var,size,fail) \
-    if (lim-ptr < size) { fail; }               \
-    type var = lh_read_le(ptr,type,size);
-/// \endcond
+static inline uint8_t * lh_place_char(uint8_t *p, uint8_t v) {
+    PUTLE;
+    return p;
+}
 
-#define lh_lread_char_be(ptr,lim,var,fail)      \
-    if (lim==ptr) { fail; }                     \
-    uint8_t var = *ptr++;
-#define lh_lread_char_le(ptr,lim,var,fail)    lh_lread_char_be(ptr,lim,var,fail)
+static inline uint8_t * lh_place_short_le(uint8_t *p, uint16_t v) {
+    PUTLE;PUTLE;
+    return p;
+}
 
-#define lh_lread_short_be(ptr,lim,var,fail)   lh_lread_be(ptr,lim,uint16_t,var,2,fail)
-#define lh_lread_short_le(ptr,lim,var,fail)   lh_lread_le(ptr,lim,uint16_t,var,2,fail)
-#define lh_lread_int_be(ptr,lim,var,fail)     lh_lread_be(ptr,lim,uint32_t,var,4,fail)
-#define lh_lread_int_le(ptr,lim,var,fail)     lh_lread_le(ptr,lim,uint32_t,var,4,fail)
-#define lh_lread_long_be(ptr,lim,var,fail)    lh_lread_be(ptr,lim,uint64_t,var,8,fail)
-#define lh_lread_long_le(ptr,lim,var,fail)    lh_lread_le(ptr,lim,uint64_t,var,8,fail)
-#define lh_lread_float_be(ptr,lim,var,fail)   lh_lread_be(ptr,lim,float,var,4,fail)
-#define lh_lread_float_le(ptr,lim,var,fail)   lh_lread_le(ptr,lim,float,var,4,fail)
-#define lh_lread_double_be(ptr,lim,var,fail)  lh_lread_be(ptr,lim,double,var,8,fail)
-#define lh_lread_double_le(ptr,lim,var,fail)  lh_lread_le(ptr,lim,double,var,8,fail)
+static inline uint8_t * lh_place_int_le(uint8_t *p, uint32_t v) {
+    PUTLE;PUTLE;PUTLE;PUTLE;
+    return p;
+}
 
-#endif
-////////////////////////////////////////////////////////////////////////////////
+static inline uint8_t * lh_place_long_le(uint8_t *p, uint64_t v) {
+    PUTLE;PUTLE;PUTLE;PUTLE;PUTLE;PUTLE;PUTLE;PUTLE;
+    return p;
+}
 
-/**
- * @name Place to Byte Stream
- * Write elemental data types to a byte stream
- */
+static inline uint8_t * lh_place_short_be(uint8_t *p, uint16_t v) {
+    *p++ = (uint8_t)(v>>8);  *p++ = (uint8_t)v;
+    return p;
+}
 
-/// \cond INTERNAL
-#define PUTF *p++ = *t++
-#define PUTR *p++ = *t--
+static inline uint8_t * lh_place_int_be(uint8_t *p, uint32_t v) {
+    *p++ = (uint8_t)(v>>24); *p++ = (uint8_t)(v>>16);
+    *p++ = (uint8_t)(v>>8);  *p++ = (uint8_t)v;
+    return p;
+}
 
-#define PUTF1 PUTF
-#define PUTR1 PUTR
-#define PUTF2 PUTF;PUTF
-#define PUTR2 PUTR;PUTR
-#define PUTF4 PUTF2;PUTF2
-#define PUTR4 PUTR2;PUTR2
-#define PUTF8 PUTF4;PUTF4
-#define PUTR8 PUTR4;PUTR4
-#define PUTFM(n) PUTF ## n
-#define PUTRM(n) PUTR ## n
+static inline uint8_t * lh_place_long_be(uint8_t *p, uint64_t v) {
+    *p++ = (uint8_t)(v>>56); *p++ = (uint8_t)(v>>48);
+    *p++ = (uint8_t)(v>>40); *p++ = (uint8_t)(v>>32);
+    *p++ = (uint8_t)(v>>24); *p++ = (uint8_t)(v>>16);
+    *p++ = (uint8_t)(v>>8);  *p++ = (uint8_t)v;
+    return p;
+}
 
-// Note: we are using a "statement expression" ( { } ) to turn
-// a block into an expression. This is a GCC-specific extension,
-// not standard C
-//FIXME: introduce a C-standard variant of this macro,
-//distinguish with #ifdef __GNU_C
+static inline uint8_t * lh_place_float_le(uint8_t *p, float v) {
+    union { float f; uint32_t i; } temp;
+    temp.f = v;
+    return lh_place_int_le(p,temp.i);
+}
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN     
+static inline uint8_t * lh_place_float_be(uint8_t *p, float v) {
+    union { float f; uint32_t i; } temp;
+    temp.f = v;
+    return lh_place_int_be(p,temp.i);
+}
 
-#define lh_place_be(ptr,type,size,val) ( {      \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        temp.value = val;                       \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[size-1];       \
-        PUTRM(size);                            \
-        p; } )
-#define lh_place_le(ptr,type,size,val) ( {      \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        temp.value = val;                       \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[0];            \
-        PUTFM(size);                            \
-        p; } )
+static inline uint8_t * lh_place_double_le(uint8_t *p, double v) {
+    union { double f; uint64_t i; } temp;
+    temp.f = v;
+    return lh_place_long_le(p,temp.i);
+}
 
-#else
+static inline uint8_t * lh_place_double_be(uint8_t *p, double v) {
+    union { double f; uint64_t i; } temp;
+    temp.f = v;
+    return lh_place_long_be(p,temp.i);
+}
 
-#define lh_place_be(ptr,type,size,val) ( {      \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        temp.value = val;                       \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[0];            \
-        PUTFM(size);                            \
-        p; } )
-#define lh_place_le(ptr,type,size,val) ( {      \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        temp.value = val;                       \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[size-1];       \
-        PUTRM(size);                            \
-        p; } )
-
-#endif           
-
-/// \endcond
-
-#define lh_place_char_be(ptr,val)               \
-    ( { uint8_t *p = (uint8_t *)ptr; *p++=val; p; } )
-#define lh_place_char_le(ptr,val)       lh_place_char_be(ptr,val)
-#define lh_place_short_be(ptr,val)      lh_place_be(ptr,uint16_t,2,val)
-#define lh_place_short_le(ptr,val)      lh_place_le(ptr,uint16_t,2,val)
-#define lh_place_int_be(ptr,val)        lh_place_be(ptr,uint32_t,4,val)
-#define lh_place_int_le(ptr,val)        lh_place_le(ptr,uint32_t,4,val)
-#define lh_place_long_be(ptr,val)       lh_place_be(ptr,uint64_t,8,val)
-#define lh_place_long_le(ptr,val)       lh_place_le(ptr,uint64_t,8,val)
-#define lh_place_float_be(ptr,val)      lh_place_be(ptr,float,4,val)
-#define lh_place_float_le(ptr,val)      lh_place_le(ptr,float,4,val)
-#define lh_place_double_be(ptr,val)     lh_place_be(ptr,double,8,val)
-#define lh_place_double_le(ptr,val)     lh_place_le(ptr,double,8,val)
-
-#define lh_place_varint(ptr,val) ( {             \
-            uint32_t temp = (uint32_t) val;      \
-            uint8_t *p = ptr;                    \
-            while(temp>0) {                      \
-                *p++ = (temp&0x7f)|0x80;         \
-                temp >>= 7;                      \
-            }                                    \
-            *(p-1) &= 0x7f;                      \
-            p; } )
-                
-
-
-/**
- * @name Write Byte Stream
- * Write elemental types to a bytestream and advance the write pointer
- */
-
-#define lh_write_char_be(ptr,val)       ptr=lh_place_char_be(ptr,val)
-#define lh_write_char_le(ptr,val)       ptr=lh_place_char_le(ptr,val)
+#define lh_write_char(ptr,val)          ptr=lh_place_char(ptr,val)
 #define lh_write_short_be(ptr,val)      ptr=lh_place_short_be(ptr,val)
 #define lh_write_short_le(ptr,val)      ptr=lh_place_short_le(ptr,val)
 #define lh_write_int_be(ptr,val)        ptr=lh_place_int_be(ptr,val)
@@ -411,7 +332,54 @@ def_lread(double_le,double);
 #define lh_write_double_be(ptr,val)     ptr=lh_place_double_be(ptr,val)
 #define lh_write_double_le(ptr,val)     ptr=lh_place_double_le(ptr,val)
 
+#define def_lwrite(name,type)                                           \
+    static inline int _lh_lwrite_##name(uint8_t **p, uint8_t *l, type v) { \
+        if (l<*p+sizeof(v)) return 0;                                   \
+        lh_write_##name(*p,v);                                          \
+        return 1;                                                       \
+    }
+
+def_lwrite(char,uint8_t);
+def_lwrite(short_be,uint16_t);
+def_lwrite(short_le,uint16_t);
+def_lwrite(int_be,uint32_t);
+def_lwrite(int_le,uint32_t);
+def_lwrite(long_be,uint64_t);
+def_lwrite(long_le,uint64_t);
+def_lwrite(float_be,float);
+def_lwrite(float_le,float);
+def_lwrite(double_be,double);
+def_lwrite(double_le,double);
+
+#define lh_lwrite_char(p,l,v)       _lh_lwrite_char(&p,l,v)
+#define lh_lwrite_short_be(p,l,v)   _lh_lwrite_short_be(&p,l,v)
+#define lh_lwrite_short_le(p,l,v)   _lh_lwrite_short_le(&p,l,v)
+#define lh_lwrite_int_be(p,l,v)     _lh_lwrite_int_be(&p,l,v)
+#define lh_lwrite_int_le(p,l,v)     _lh_lwrite_int_le(&p,l,v)
+#define lh_lwrite_long_be(p,l,v)    _lh_lwrite_long_be(&p,l,v)
+#define lh_lwrite_long_le(p,l,v)    _lh_lwrite_long_le(&p,l,v)
+#define lh_lwrite_float_be(p,l,v)   _lh_lwrite_float_be(&p,l,v)
+#define lh_lwrite_float_le(p,l,v)   _lh_lwrite_float_le(&p,l,v)
+#define lh_lwrite_double_be(p,l,v)  _lh_lwrite_double_be(&p,l,v)
+#define lh_lwrite_double_le(p,l,v)  _lh_lwrite_double_le(&p,l,v)
+
+
+
+#if 0
+
+#define lh_place_varint(ptr,val) ( {             \
+            uint32_t temp = (uint32_t) val;      \
+            uint8_t *p = ptr;                    \
+            while(temp>0) {                      \
+                *p++ = (temp&0x7f)|0x80;         \
+                temp >>= 7;                      \
+            }                                    \
+            *(p-1) &= 0x7f;                      \
+            p; } )
+
 #define lh_write_varint(ptr,val)        ptr=lh_place_varint(ptr,val)
+
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -461,69 +429,68 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 
 #ifdef LH_DECLARE_SHORT_NAMES
 
-#define bswap_short(v)                  lh_bswap_short(v)
-#define bswap_int(v)                    lh_bswap_int(v)
-#define bswap_long(v)                   lh_bswap_long(v)
-#define bswap_float(v)                  lh_bswap_float(v)
-#define bswap_double(v)                 lh_bswap_double(v)
+#define bswap_short             lh_bswap_short
+#define bswap_int               lh_bswap_int
+#define bswap_long              lh_bswap_long
+#define bswap_float             lh_bswap_float
+#define bswap_double            lh_bswap_double
 
-#define ibswap_short(v)                 lh_ibswap_short(v)
-#define ibswap_int(v)                   lh_ibswap_int(v)
-#define ibswap_long(v)                  lh_ibswap_long(v)
-#define ibswap_float(v)                 lh_ibswap_float(v)
-#define ibswap_double(v)                lh_ibswap_double(v)
+#define ibswap_short            lh_ibswap_short
+#define ibswap_int              lh_ibswap_int
+#define ibswap_long             lh_ibswap_long
+#define ibswap_float            lh_ibswap_float
+#define ibswap_double           lh_ibswap_double
 
-#define parse_char(ptr)                 lh_parse_char_be(ptr)
-#define parse_char_le(ptr)              lh_parse_char_le(ptr)
-#define parse_short(ptr)                lh_parse_short_be(ptr)
-#define parse_short_le(ptr)             lh_parse_short_le(ptr)
-#define parse_int(ptr)                  lh_parse_int_be(ptr)
-#define parse_int_le(ptr)               lh_parse_int_le(ptr)
-#define parse_long(ptr)                 lh_parse_long_be(ptr)
-#define parse_long_le(ptr)              lh_parse_long_le(ptr)
-#define parse_float(ptr)                lh_parse_float_be(ptr)
-#define parse_float_le(ptr)             lh_parse_float_le(ptr)
-#define parse_double(ptr)               lh_parse_double_be(ptr)
-#define parse_double_le(ptr)            lh_parse_double_le(ptr)
+#define parse_char              lh_parse_char
+#define parse_char_le           lh_parse_char
+#define parse_short             lh_parse_short_be
+#define parse_short_le          lh_parse_short_le
+#define parse_int               lh_parse_int_be
+#define parse_int_le            lh_parse_int_le
+#define parse_long              lh_parse_long_be
+#define parse_long_le           lh_parse_long_le
+#define parse_float             lh_parse_float_be
+#define parse_float_le          lh_parse_float_le
+#define parse_double            lh_parse_double_be
+#define parse_double_le         lh_parse_double_le
 
-#define lread_char(ptr,lim,var,fail)        lh_lread_char_be(ptr,lim,var,fail)
-#define lread_char_le(ptr,lim,var,fail)     lh_lread_char_le(ptr,lim,var,fail)
-#define lread_short(ptr,lim,var,fail)       lh_lread_short_be(ptr,lim,var,fail)
-#define lread_short_le(ptr,lim,var,fail)    lh_lread_short_le(ptr,lim,var,fail)
-#define lread_int(ptr,lim,var,fail)         lh_lread_int_be(ptr,lim,var,fail)
-#define lread_int_le(ptr,lim,var,fail)      lh_lread_int_le(ptr,lim,var,fail)
-#define lread_long(ptr,lim,var,fail)        lh_lread_long_be(ptr,lim,var,fail)
-#define lread_long_le(ptr,lim,var,fail)     lh_lread_long_le(ptr,lim,var,fail)
-#define lread_float(ptr,lim,var,fail)       lh_lread_float_be(ptr,lim,var,fail)
-#define lread_float_le(ptr,lim,var,fail)    lh_lread_float_le(ptr,lim,var,fail)
-#define lread_double(ptr,lim,var,fail)      lh_lread_double_be(ptr,lim,var,fail)
-#define lread_double_le(ptr,lim,var,fail)   lh_lread_double_le(ptr,lim,var,fail)
+#define lread_char              lh_lread_char
+#define lread_char_le           lh_lread_char
+#define lread_short             lh_lread_short_be
+#define lread_short_le          lh_lread_short_le
+#define lread_int               lh_lread_int_be
+#define lread_int_le            lh_lread_int_le
+#define lread_long              lh_lread_long_be
+#define lread_long_le           lh_lread_long_le
+#define lread_float             lh_lread_float_be
+#define lread_float_le          lh_lread_float_le
+#define lread_double            lh_lread_double_be
+#define lread_double_le         lh_lread_double_le
 
-#define place_char(ptr,val)             lh_place_char_be(ptr,val)
-#define place_char_le(ptr,val)          lh_place_char_le(ptr,val)
-#define place_short(ptr,val)            lh_place_short_be(ptr,val)
-#define place_short_le(ptr,val)         lh_place_short_le(ptr,val)
-#define place_int(ptr,val)              lh_place_int_be(ptr,val)
-#define place_int_le(ptr,val)           lh_place_int_le(ptr,val)
-#define place_long(ptr,val)             lh_place_long_be(ptr,val)
-#define place_long_le(ptr,val)          lh_place_long_le(ptr,val)
-#define place_float(ptr,val)            lh_place_float_be(ptr,val)
-#define place_float_le(ptr,val)         lh_place_float_le(ptr,val)
-#define place_double(ptr,val)           lh_place_double_be(ptr,val)
-#define place_double_le(ptr,val)        lh_place_double_le(ptr,val)
+#define place_char              lh_place_char
+#define place_char_le           lh_place_char
+#define place_short             lh_place_short_be
+#define place_short_le          lh_place_short_le
+#define place_int               lh_place_int_be
+#define place_int_le            lh_place_int_le
+#define place_long              lh_place_long_be
+#define place_long_le           lh_place_long_le
+#define place_float             lh_place_float_be
+#define place_float_le          lh_place_float_le
+#define place_double            lh_place_double_be
+#define place_double_le         lh_place_double_le
 
-#define write_char(ptr,val)             lh_write_char_be(ptr,val)
-#define write_char_le(ptr,val)          lh_write_char_le(ptr,val)
-#define write_short(ptr,val)            lh_write_short_be(ptr,val)
-#define write_short_le(ptr,val)         lh_write_short_le(ptr,val)
-#define write_int(ptr,val)              lh_write_int_be(ptr,val)
-#define write_int_le(ptr,val)           lh_write_int_le(ptr,val)
-#define write_long(ptr,val)             lh_write_long_be(ptr,val)
-#define write_long_le(ptr,val)          lh_write_long_le(ptr,val)
-#define write_float(ptr,val)            lh_write_float_be(ptr,val)
-#define write_float_le(ptr,val)         lh_write_float_le(ptr,val)
-#define write_double(ptr,val)           lh_write_double_be(ptr,val)
-#define write_double_le(ptr,val)        lh_write_double_le(ptr,val)
-#define write_varint                    lh_write_varint
+#define write_char              lh_write_char
+#define write_char_le           lh_write_char
+#define write_short             lh_write_short_be
+#define write_short_le          lh_write_short_le
+#define write_int               lh_write_int_be
+#define write_int_le            lh_write_int_le
+#define write_long              lh_write_long_be
+#define write_long_le           lh_write_long_le
+#define write_float             lh_write_float_be
+#define write_float_le          lh_write_float_le
+#define write_double            lh_write_double_be
+#define write_double_le         lh_write_double_le
 
 #endif
