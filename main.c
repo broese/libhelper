@@ -292,10 +292,10 @@ int test_bswap() {
     return fail;
 }
 
-#define TEST_PARSE(type,val,check) {                            \
-        f = (val != check);                                 \
-        fail += f;                                              \
-        printf("%s: %s\n", "lh_" #type, PASSFAIL(!f));    \
+#define TEST_PARSE(type,val,check) {                                    \
+        f = (val != check);                                             \
+        fail += f;                                                      \
+        printf("%s: %s   %016jx %016jx\n", "lh_" #type, PASSFAIL(!f),(uint64_t)val,(uint64_t)check); \
     }
 
 #define Rx(type,var) lh_lread_ ##type##_be(ptr,lim,var, { atlimit=1; break; })
@@ -304,22 +304,25 @@ int test_bswap() {
 #define Rint(var)   Rx(int,var)
 #define Rlong(var)  Rx(long,var)
 
-#define TEST_LREAD(len,rlen,v_atlimit,v_rc,v_rs,v_ri,v_rl)  \
-    ptr = buf;                                          \
-    lim = ptr+len;                                      \
-    atlimit=0;                                          \
-    do {                                                \
-        Rchar(rc);                                      \
-        Rshort(rs);                                     \
-        Rint(ri);                                       \
-        Rlong(rl);                                      \
-        f = (rc!=v_rc) || (rs!=v_rs) ||                 \
-            (ri!=v_ri) || (rl!=v_rl);                   \
-    } while(0);                                         \
-    f += (ptr != buf+rlen);                             \
-    if (atlimit) f=0;                                   \
-    f += (atlimit!=v_atlimit);                          \
-    fail += f;                                          \
+#define TEST_LREAD(len,rlen,fits,v_rc,v_rs,v_ri,v_rl)        \
+    ptr = buf;                                               \
+    lim = ptr+len;                                           \
+    atlimit=0;                                               \
+    {                                                        \
+    uint8_t rc;                                              \
+    uint16_t rs;                                             \
+    uint32_t ri;                                             \
+    uint64_t rl;                                             \
+    if ( lh_lread_char(ptr,lim,rc) &&                        \
+         lh_lread_short_be(ptr,lim,rs) &&                    \
+         lh_lread_int_be(ptr,lim,ri) &&                      \
+         lh_lread_long_be(ptr,lim,rl) )                      \
+        f += (!fits);                                        \
+    else                                                     \
+        f += fits;                                           \
+    }                                                        \
+    f += (ptr != buf+rlen);                                  \
+    fail += f;                                               \
     printf("lh_lread len=%d %s\n", len, PASSFAIL(!f));
 
 
@@ -339,24 +342,39 @@ int test_stream() {
         0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0,
     };
 
-    uint8_t vc = lh_parse_char_be(buf);
-    TEST_PARSE(parse_char_be,vc,0x12);
+    uint8_t vc = lh_parse_char(buf);
+    TEST_PARSE(parse_char,vc,0x12);
 
     uint16_t vs = lh_parse_short_be(buf);
     TEST_PARSE(parse_short_be,vs,0x1234);
-
     uint32_t vi = lh_parse_int_be(buf);
     TEST_PARSE(parse_int_be,vi,0x12345678);
-
     uint64_t vl = lh_parse_long_be(buf);
     TEST_PARSE(parse_long_be,vl,0x123456789ABCDEF0LL);
 
+    vs = lh_parse_short_le(buf);
+    TEST_PARSE(parse_short_le,vs,0x3412);
+    vi = lh_parse_int_le(buf);
+    TEST_PARSE(parse_int_le,vi,0x78563412);
+    vl = lh_parse_long_le(buf);
+    TEST_PARSE(parse_long_le,vl,0xF0DEBC9A78563412LL);
+
     ////////////////////////////////////////////////////////////////////////////
+
+#if 0
+    uint8_t *p = buf;
+    vc = _lh_read_char(&p);
+    printf("vc:%02x buf:%p p:%p\n",vc,buf,p);
+    vc = lh_read_char(p);
+    printf("vc:%02x buf:%p p:%p\n",vc,buf,p);
+    vc = lh_parse_char(p);
+    printf("vc:%02x buf:%p p:%p\n",vc,buf,p);
+#endif
 
     uint8_t *ptr = buf;
 
-    vc = lh_read_char_be(ptr);
-    TEST_PARSE(read_char_be,vc,0x12);
+    vc = lh_read_char(ptr);
+    TEST_PARSE(read_char,vc,0x12);
 
     vs = lh_read_short_be(ptr);
     TEST_PARSE(read_short_be,vs,0x3456);
@@ -367,17 +385,24 @@ int test_stream() {
     vl = lh_read_long_be(ptr);
     TEST_PARSE(read_long_be,vl,0xf0123456789abcdeLL);
 
+    vs = lh_read_short_le(ptr);
+    TEST_PARSE(read_short_be,vs,0x12f0);
+
+    vi = lh_read_int_le(ptr);
+    TEST_PARSE(read_int_be,vi,0x9A785634);
+
+    vl = lh_read_long_le(ptr);
+    TEST_PARSE(read_long_be,vl,0x9a78563412f0debcLL);
+
     ////////////////////////////////////////////////////////////////////////////
 
     uint8_t *lim;
     int atlimit;
 
-    TEST_LREAD(15,15,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
-    TEST_LREAD(14,15,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
-    TEST_LREAD(7,7,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
-    TEST_LREAD(30,15,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
-
-    
+    TEST_LREAD(15,15,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+    TEST_LREAD(14,7,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+    TEST_LREAD(7,7,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+    TEST_LREAD(30,15,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -389,6 +414,7 @@ typedef struct {
     uint64_t  cat;
 } test_t;
 
+#if 0
 int test_unpack() {
     printf("\n\n====== Testing unpack ======\n");
     int fail = 0, f;
@@ -412,6 +438,7 @@ int test_unpack() {
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
+#endif
 
 #define TEST_WSTREAM(func, buf1, buf2, len) {        \
         int f=0;                                     \
@@ -851,16 +878,16 @@ int main(int ac, char **av) {
     fail += test_bprintf();
     */
     
-    /*
+    
     //// lh_bytes.h
-    fail += test_bswap();
+    //fail += test_bswap();
     fail += test_stream();
-    fail += test_wstream();
-    fail += test_unpack();
-    */
+    //fail += test_wstream();
+    //fail += test_unpack();
+    
 
     //// lh_files.h
-    fail += test_files();
+    //fail += test_files();
     
     //// lh_net.h
     //// lh_event.h

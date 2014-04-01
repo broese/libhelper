@@ -99,86 +99,137 @@ static inline double lh_bswap_double(double v) {
  * Functions for parsing values from a bytestream
  */
 
-/// \cond
+#define GETBE v = (v<<8)|(*((*p)++));
 
-#define GETF *t++ = *p++
-#define GETR *t-- = *p++
+static inline uint8_t _lh_read_char(uint8_t **p) {
+    uint8_t v = *((*p)++);
+    return v;
+}
 
-#define GETF1 GETF
-#define GETR1 GETR
-#define GETF2 GETF;GETF
-#define GETR2 GETR;GETR
-#define GETF4 GETF2;GETF2
-#define GETR4 GETR2;GETR2
-#define GETF8 GETF4;GETF4
-#define GETR8 GETR4;GETR4
-#define GETFM(n) GETF ## n
-#define GETRM(n) GETR ## n
+static inline uint16_t _lh_read_short_be(uint8_t **p) {
+    uint16_t v=(uint16_t)*((*p)++);
+    GETBE;
+    return v;
+}
 
-// Note: we are using a "statement expression" ( { } ) to turn
-// a block into an expression. This is a GCC-specific extension,
-// not standard C
-//FIXME: introduce a C-standard variant of this macro,
-//distinguish with #ifdef __GNU_C
+static inline uint16_t _lh_read_short_le(uint8_t **p) {
+    uint16_t v=(uint16_t)*((*p)++);
+    v |= ((*((*p)++))<<8);
+    return v;
+}
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN     
+static inline uint32_t _lh_read_int_be(uint8_t **p) {
+    uint32_t v=(uint32_t)*((*p)++);
+    GETBE;GETBE;GETBE;
+    return v;
+}
 
-#define lh_parse_be(ptr,type,size) ( {          \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[size-1];       \
-        GETRM(size);                            \
-        temp.value; } )
-#define lh_parse_le(ptr,type,size) ( {          \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[0];            \
-        GETFM(size);                            \
-        temp.value; } )
+static inline uint32_t _lh_read_int_le(uint8_t **p) {
+    uint32_t v=(uint32_t)*((*p)++);
+    v |= ((*((*p)++))<<8); v |= ((*((*p)++))<<16); v |= ((*((*p)++))<<24);
+    return v;
+}
 
-#else
+static inline uint64_t _lh_read_long_be(uint8_t **p) {
+    uint64_t v=(uint64_t)*((*p)++);
+    GETBE;GETBE;GETBE;GETBE;GETBE;GETBE;GETBE;
+    return v;
+}
 
-#define lh_parse_be(ptr,type,size) ( {          \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[0];            \
-        GETFM(size);                            \
-        temp.value; } )
-#define lh_parse_le(ptr,type,size) ( {          \
-        union {                                 \
-            uint8_t bytes[size];                \
-            type    value;                      \
-        } temp;                                 \
-        uint8_t *p = (uint8_t *)ptr;            \
-        uint8_t *t = &temp.bytes[size-1];       \
-        GETRM(size);                            \
-        temp.value; } )
+static inline uint64_t _lh_read_long_le(uint8_t **p) {
+    uint64_t v=(uint64_t)*((*p)++);
+    v |= ((*((*p)++))<<8); v |= ((*((*p)++))<<16); v |= ((*((*p)++))<<24);
+    v |= ((uint64_t)(*((*p)++))<<32); v |= ((uint64_t)(*((*p)++))<<40);
+    v |= ((uint64_t)(*((*p)++))<<48); v |= ((uint64_t)(*((*p)++))<<56);
+    return v;
+}
 
-#endif           
+static inline float _lh_read_float_be(uint8_t **p) {
+    union { uint32_t i; float f; } temp;
+    temp.i = _lh_read_int_be(p);
+    return temp.f;
+}
 
-/// \endcond
+static inline float _lh_read_float_le(uint8_t **p) {
+    union { uint32_t i; float f; } temp;
+    temp.i = _lh_read_int_le(p);
+    return temp.f;
+}
 
-#define lh_parse_char_be(ptr)   *ptr
-#define lh_parse_char_le(ptr)   lh_parse_char_be(ptr)
-#define lh_parse_short_be(ptr)  lh_parse_be(ptr,uint16_t,2)
-#define lh_parse_short_le(ptr)  lh_parse_le(ptr,uint16_t,2)
-#define lh_parse_int_be(ptr)    lh_parse_be(ptr,uint32_t,4)
-#define lh_parse_int_le(ptr)    lh_parse_le(ptr,uint32_t,4)
-#define lh_parse_long_be(ptr)   lh_parse_be(ptr,uint64_t,8)
-#define lh_parse_long_le(ptr)   lh_parse_le(ptr,uint64_t,8)
-#define lh_parse_float_be(ptr)  lh_parse_be(ptr,float,4)
-#define lh_parse_float_le(ptr)  lh_parse_le(ptr,float,4)
-#define lh_parse_double_be(ptr) lh_parse_be(ptr,double,8)
-#define lh_parse_double_le(ptr) lh_parse_le(ptr,double,8)
+static inline double _lh_read_double_be(uint8_t **p) {
+    union { uint64_t l; double d; } temp;
+    temp.l = _lh_read_long_be(p);
+    return temp.d;
+}
+
+static inline double _lh_read_double_le(uint8_t **p) {
+    union { uint64_t l; double d; } temp;
+    temp.l = _lh_read_long_le(p);
+    return temp.d;
+}
+
+#define lh_read_char(p)         _lh_read_char(&p)
+#define lh_read_short_be(p)     _lh_read_short_be(&p)
+#define lh_read_short_le(p)     _lh_read_short_le(&p)
+#define lh_read_int_be(p)       _lh_read_int_be(&p)
+#define lh_read_int_le(p)       _lh_read_int_le(&p)
+#define lh_read_long_be(p)      _lh_read_long_be(&p)
+#define lh_read_long_le(p)      _lh_read_long_le(&p)
+#define lh_read_float_be(p)     _lh_read_float_be(&p)
+#define lh_read_float_le(p)     _lh_read_float_le(&p)
+#define lh_read_double_be(p)    _lh_read_double_be(&p)
+#define lh_read_double_le(p)    _lh_read_double_le(&p)
+
+static inline uint8_t  lh_parse_char(uint8_t *p)      { _lh_read_char(&p); }
+static inline uint16_t lh_parse_short_be(uint8_t *p)  { _lh_read_short_be(&p); }
+static inline uint16_t lh_parse_short_le(uint8_t *p)  { _lh_read_short_le(&p); }
+static inline uint32_t lh_parse_int_be(uint8_t *p)    { _lh_read_int_be(&p); }
+static inline uint32_t lh_parse_int_le(uint8_t *p)    { _lh_read_int_le(&p); }
+static inline uint64_t lh_parse_long_be(uint8_t *p)   { _lh_read_long_be(&p); }
+static inline uint64_t lh_parse_long_le(uint8_t *p)   { _lh_read_long_le(&p); }
+static inline float    lh_parse_float_be(uint8_t *p)  { _lh_read_float_be(&p); }
+static inline float    lh_parse_float_le(uint8_t *p)  { _lh_read_float_le(&p); }
+static inline double   lh_parse_double_be(uint8_t *p) { _lh_read_double_be(&p); }
+static inline double   lh_parse_double_le(uint8_t *p) { _lh_read_double_le(&p); }
+
+//TODO: zstring, lstring, varint
+
+#define def_lread(name,type)                                            \
+    static inline int _lh_lread_##name(uint8_t **p, uint8_t *l, type *v) { \
+        if (l<*p+sizeof(*v)) return 0;                                  \
+        *v = _lh_read_##name(p);                                        \
+        return 1;                                                       \
+    }
+
+def_lread(char,uint8_t);
+def_lread(short_be,uint16_t);
+def_lread(short_le,uint16_t);
+def_lread(int_be,uint32_t);
+def_lread(int_le,uint32_t);
+def_lread(long_be,uint64_t);
+def_lread(long_le,uint64_t);
+def_lread(float_be,float);
+def_lread(float_le,float);
+def_lread(double_be,double);
+def_lread(double_le,double);
+
+#define lh_lread_char(p,l,v)        _lh_lread_char(&p,l,&v)
+#define lh_lread_char_be(p,l,v)     _lh_lread_char_be(&p,l,&v)
+#define lh_lread_char_le(p,l,v)     _lh_lread_char_le(&p,l,&v)
+#define lh_lread_short_be(p,l,v)    _lh_lread_short_be(&p,l,&v)
+#define lh_lread_short_le(p,l,v)    _lh_lread_short_le(&p,l,&v)
+#define lh_lread_int_be(p,l,v)      _lh_lread_int_be(&p,l,&v)
+#define lh_lread_int_le(p,l,v)      _lh_lread_int_le(&p,l,&v)
+#define lh_lread_long_be(p,l,v)     _lh_lread_long_be(&p,l,&v)
+#define lh_lread_long_le(p,l,v)     _lh_lread_long_le(&p,l,&v)
+#define lh_lread_float_be(p,l,v)    _lh_lread_float_be(&p,l,&v)
+#define lh_lread_float_le(p,l,v)    _lh_lread_float_le(&p,l,&v)
+#define lh_lread_double_be(p,l,v)   _lh_lread_double_be(&p,l,&v)
+#define lh_lread_double_le(p,l,v)   _lh_lread_double_le(&p,l,&v)
+
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
 
 #define lh_parse_varint(ptr) ( {                \
             uint32_t temp = 0;                  \
@@ -192,33 +243,6 @@ static inline double lh_bswap_double(double v) {
             } while (c&0x80);                   \
             temp; })
 
-////////////////////////////////////////////////////////////////////////////////
-
-/**
- * @name Read Bytestream
- * Macros that parse the byte stream for data and then advance the reading pointer
- */
-
-/// \cond
-#define lh_read_be(ptr,type,size)                                       \
-    ( { type temp = lh_parse_be(ptr,type,size); ptr+=size; temp; } )
-#define lh_read_le(ptr,type,size)                                       \
-    ( { type temp = lh_parse_le(ptr,type,size); ptr+=size; temp; } )
-/// \endcond
-
-#define lh_read_char_be(ptr)    *ptr++
-#define lh_read_char_le(ptr)    lh_read_char_be(ptr)
-#define lh_read_short_be(ptr)   lh_read_be(ptr,uint16_t,2)
-#define lh_read_short_le(ptr)   lh_read_le(ptr,uint16_t,2)
-#define lh_read_int_be(ptr)     lh_read_be(ptr,uint32_t,4)
-#define lh_read_int_le(ptr)     lh_read_le(ptr,uint32_t,4)
-#define lh_read_long_be(ptr)    lh_read_be(ptr,uint64_t,8)
-#define lh_read_long_le(ptr)    lh_read_le(ptr,uint64_t,8)
-#define lh_read_float_be(ptr)   lh_read_be(ptr,float,4)
-#define lh_read_float_le(ptr)   lh_read_le(ptr,float,4)
-#define lh_read_double_be(ptr)  lh_read_be(ptr,double,8)
-#define lh_read_double_le(ptr)  lh_read_le(ptr,double,8)
-
 #define lh_read_varint(ptr) ( {                 \
             uint32_t temp = 0;                  \
             int s = 0;                          \
@@ -229,9 +253,11 @@ static inline double lh_bswap_double(double v) {
                 s += 7;                         \
             } while (c&0x80);                   \
             temp; })
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 /**
  * @name Read Limit Bytestream
  * Macros for reading the byte stream with limit checking
@@ -262,7 +288,7 @@ static inline double lh_bswap_double(double v) {
 #define lh_lread_double_be(ptr,lim,var,fail)  lh_lread_be(ptr,lim,double,var,8,fail)
 #define lh_lread_double_le(ptr,lim,var,fail)  lh_lread_le(ptr,lim,double,var,8,fail)
 
-
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -389,6 +415,7 @@ static inline double lh_bswap_double(double v) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 #include <stdarg.h>
 
 #define UNPACK(name,type)                        \
@@ -428,6 +455,7 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
     else
         return ptr-start;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
