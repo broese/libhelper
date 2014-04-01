@@ -168,6 +168,18 @@ static inline double _lh_read_double_le(uint8_t **p) {
     return temp.d;
 }
 
+static inline uint32_t _lh_read_varint(uint8_t **p) {
+    uint32_t v=0;
+    int s=0;
+    uint8_t c;
+    do {
+        c = *(*p)++;
+        v += ((c&0x7f)<<s);
+        s += 7;
+    } while (c&0x80);
+    return v;
+}
+
 #define lh_read_char(p)         _lh_read_char(&p)
 #define lh_read_short_be(p)     _lh_read_short_be(&p)
 #define lh_read_short_le(p)     _lh_read_short_le(&p)
@@ -179,6 +191,7 @@ static inline double _lh_read_double_le(uint8_t **p) {
 #define lh_read_float_le(p)     _lh_read_float_le(&p)
 #define lh_read_double_be(p)    _lh_read_double_be(&p)
 #define lh_read_double_le(p)    _lh_read_double_le(&p)
+#define lh_read_varint(p)       _lh_read_varint(&p)
 
 static inline uint8_t  lh_parse_char(uint8_t *p)      { _lh_read_char(&p); }
 static inline uint16_t lh_parse_short_be(uint8_t *p)  { _lh_read_short_be(&p); }
@@ -191,8 +204,9 @@ static inline float    lh_parse_float_be(uint8_t *p)  { _lh_read_float_be(&p); }
 static inline float    lh_parse_float_le(uint8_t *p)  { _lh_read_float_le(&p); }
 static inline double   lh_parse_double_be(uint8_t *p) { _lh_read_double_be(&p); }
 static inline double   lh_parse_double_le(uint8_t *p) { _lh_read_double_le(&p); }
+static inline uint32_t lh_parse_varint(uint8_t *p)    { _lh_read_varint(&p); }
 
-//TODO: zstring, lstring, varint
+//TODO: zstring, lstring
 
 #define def_lread(name,type)                                            \
     static inline int _lh_lread_##name(uint8_t **p, uint8_t *l, type *v) { \
@@ -213,6 +227,23 @@ def_lread(float_le,float);
 def_lread(double_be,double);
 def_lread(double_le,double);
 
+static inline int _lh_lread_varint(uint8_t **p, uint8_t *l, uint32_t *v) {
+    *v=0;
+    int s=0;
+    uint8_t c;
+    uint8_t *temp = *p;
+    do {
+        if (*p>=l) {
+            *p = temp;
+            return 0;
+        }
+        c = *(*p)++;
+        *v += ((c&0x7f)<<s);
+        s += 7;
+    } while (c&0x80);
+    return 1;
+}
+
 #define lh_lread_char(p,l,v)        _lh_lread_char(&p,l,&v)
 #define lh_lread_short_be(p,l,v)    _lh_lread_short_be(&p,l,&v)
 #define lh_lread_short_le(p,l,v)    _lh_lread_short_le(&p,l,&v)
@@ -224,34 +255,7 @@ def_lread(double_le,double);
 #define lh_lread_float_le(p,l,v)    _lh_lread_float_le(&p,l,&v)
 #define lh_lread_double_be(p,l,v)   _lh_lread_double_be(&p,l,&v)
 #define lh_lread_double_le(p,l,v)   _lh_lread_double_le(&p,l,&v)
-
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-
-#define lh_parse_varint(ptr) ( {                \
-            uint32_t temp = 0;                  \
-            uint8_t *p = ptr;                   \
-            int s = 0;                          \
-            uint8_t c;                          \
-            do {                                \
-                c=*p++;                         \
-                temp += ((c&0x7f)<<s);          \
-                s += 7;                         \
-            } while (c&0x80);                   \
-            temp; })
-
-#define lh_read_varint(ptr) ( {                 \
-            uint32_t temp = 0;                  \
-            int s = 0;                          \
-            uint8_t c;                          \
-            do {                                \
-                c=*ptr++;                       \
-                temp += ((c&0x7f)<<s);          \
-                s += 7;                         \
-            } while (c&0x80);                   \
-            temp; })
-#endif
+#define lh_lread_varint(p,l,v)      _lh_lread_varint(&p,l,&v)
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -320,6 +324,15 @@ static inline uint8_t * lh_place_double_be(uint8_t *p, double v) {
     return lh_place_long_be(p,temp.i);
 }
 
+static inline uint8_t * lh_place_varint(uint8_t *p, uint32_t v) {
+    do {
+        *p++ = (v&0x7f)|0x80;
+        v >>= 7;
+    } while (v>0);
+    *(p-1) &= 0x7f;
+    return p;
+}
+
 #define lh_write_char(ptr,val)          ptr=lh_place_char(ptr,val)
 #define lh_write_short_be(ptr,val)      ptr=lh_place_short_be(ptr,val)
 #define lh_write_short_le(ptr,val)      ptr=lh_place_short_le(ptr,val)
@@ -338,6 +351,20 @@ static inline uint8_t * lh_place_double_be(uint8_t *p, double v) {
         lh_write_##name(*p,v);                                          \
         return 1;                                                       \
     }
+
+static inline int _lh_lwrite_varint(uint8_t **p, uint8_t *l, uint32_t v) {
+    uint8_t *temp = *p;
+    do {
+        if (*p>=l) {
+            *p = temp;
+            return 0;
+        }
+        *(*p)++ = (v&0x7f)|0x80;
+        v >>= 7;
+    } while (v>0);
+    *((*p)-1) &= 0x7f;
+    return 1;
+}
 
 def_lwrite(char,uint8_t);
 def_lwrite(short_be,uint16_t);

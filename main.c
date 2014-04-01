@@ -361,16 +361,6 @@ int test_stream() {
 
     ////////////////////////////////////////////////////////////////////////////
 
-#if 0
-    uint8_t *p = buf;
-    vc = _lh_read_char(&p);
-    printf("vc:%02x buf:%p p:%p\n",vc,buf,p);
-    vc = lh_read_char(p);
-    printf("vc:%02x buf:%p p:%p\n",vc,buf,p);
-    vc = lh_parse_char(p);
-    printf("vc:%02x buf:%p p:%p\n",vc,buf,p);
-#endif
-
     uint8_t *ptr = buf;
 
     vc = lh_read_char(ptr);
@@ -403,6 +393,20 @@ int test_stream() {
     TEST_LREAD(14,7,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
     TEST_LREAD(7,7,0,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
     TEST_LREAD(30,15,1,0x12,0x3456,0x789abcde,0xf0123456789abcdeLL);
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    char v[] = { 0x00, 0x20, 0x80, 0x01, 0xff, 0x80, 0x01 };
+    uint8_t *vp = v;
+
+    vi = lh_read_varint(vp);
+    TEST_PARSE(parse_varint,vi,0);
+    vi = lh_read_varint(vp);
+    TEST_PARSE(parse_varint,vi,0x20);
+    vi = lh_read_varint(vp);
+    TEST_PARSE(parse_varint,vi,0x80);
+    vi = lh_read_varint(vp);
+    TEST_PARSE(parse_varint,vi,0x407f);
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
@@ -881,7 +885,7 @@ int main(int ac, char **av) {
     
     //// lh_bytes.h
     //fail += test_bswap();
-    //fail += test_stream();
+    fail += test_stream();
     fail += test_wstream();
     //fail += test_unpack();
     
