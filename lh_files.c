@@ -35,7 +35,8 @@ off_t lh_filesize(int fd) {
     }
 #endif
 
-    LH_ERROR(-1,"Cannot obtain size for this file type %d",fd);
+    //LH_ERROR(-1,"Cannot obtain size for this file type %d",fd);
+    return -1;
 }
 
 off_t lh_filesize_path(const char * path) {
@@ -57,7 +58,8 @@ off_t lh_filesize_path(const char * path) {
     }
 #endif
 
-    LH_ERROR(-1,"Cannot obtain size for this file type %s",path);
+    //LH_ERROR(-1,"Cannot obtain size for this file type %s",path);
+    return -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

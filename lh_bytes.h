@@ -344,6 +344,7 @@ static inline uint8_t * lh_place_varint(uint8_t *p, uint32_t v) {
 #define lh_write_float_le(ptr,val)      ptr=lh_place_float_le(ptr,val)
 #define lh_write_double_be(ptr,val)     ptr=lh_place_double_be(ptr,val)
 #define lh_write_double_le(ptr,val)     ptr=lh_place_double_le(ptr,val)
+#define lh_write_varint(ptr,val)        ptr=lh_place_varint(ptr,val)
 
 #define def_lwrite(name,type)                                           \
     static inline int _lh_lwrite_##name(uint8_t **p, uint8_t *l, type v) { \
@@ -351,6 +352,18 @@ static inline uint8_t * lh_place_varint(uint8_t *p, uint32_t v) {
         lh_write_##name(*p,v);                                          \
         return 1;                                                       \
     }
+
+def_lwrite(char,uint8_t);
+def_lwrite(short_be,uint16_t);
+def_lwrite(short_le,uint16_t);
+def_lwrite(int_be,uint32_t);
+def_lwrite(int_le,uint32_t);
+def_lwrite(long_be,uint64_t);
+def_lwrite(long_le,uint64_t);
+def_lwrite(float_be,float);
+def_lwrite(float_le,float);
+def_lwrite(double_be,double);
+def_lwrite(double_le,double);
 
 static inline int _lh_lwrite_varint(uint8_t **p, uint8_t *l, uint32_t v) {
     uint8_t *temp = *p;
@@ -366,18 +379,6 @@ static inline int _lh_lwrite_varint(uint8_t **p, uint8_t *l, uint32_t v) {
     return 1;
 }
 
-def_lwrite(char,uint8_t);
-def_lwrite(short_be,uint16_t);
-def_lwrite(short_le,uint16_t);
-def_lwrite(int_be,uint32_t);
-def_lwrite(int_le,uint32_t);
-def_lwrite(long_be,uint64_t);
-def_lwrite(long_le,uint64_t);
-def_lwrite(float_be,float);
-def_lwrite(float_le,float);
-def_lwrite(double_be,double);
-def_lwrite(double_le,double);
-
 #define lh_lwrite_char(p,l,v)       _lh_lwrite_char(&p,l,v)
 #define lh_lwrite_short_be(p,l,v)   _lh_lwrite_short_be(&p,l,v)
 #define lh_lwrite_short_le(p,l,v)   _lh_lwrite_short_le(&p,l,v)
@@ -389,24 +390,8 @@ def_lwrite(double_le,double);
 #define lh_lwrite_float_le(p,l,v)   _lh_lwrite_float_le(&p,l,v)
 #define lh_lwrite_double_be(p,l,v)  _lh_lwrite_double_be(&p,l,v)
 #define lh_lwrite_double_le(p,l,v)  _lh_lwrite_double_le(&p,l,v)
+#define lh_lwrite_varint(p,l,v)     _lh_lwrite_varint(&p,l,v)
 
-
-
-#if 0
-
-#define lh_place_varint(ptr,val) ( {             \
-            uint32_t temp = (uint32_t) val;      \
-            uint8_t *p = ptr;                    \
-            while(temp>0) {                      \
-                *p++ = (temp&0x7f)|0x80;         \
-                temp >>= 7;                      \
-            }                                    \
-            *(p-1) &= 0x7f;                      \
-            p; } )
-
-#define lh_write_varint(ptr,val)        ptr=lh_place_varint(ptr,val)
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -453,6 +438,21 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+
+#define lh_parse_char_be        lh_parse_char
+#define lh_parse_char_le        lh_parse_char
+#define lh_read_char_be         lh_read_char
+#define lh_read_char_le         lh_read_char
+#define lh_lread_char_be        lh_lread_char
+#define lh_lread_char_le        lh_lread_char
+
+#define lh_place_char_be        lh_place_char
+#define lh_place_char_le        lh_place_char
+#define lh_write_char_be        lh_write_char
+#define lh_write_char_le        lh_write_char
+#define lh_lwrite_char_be       lh_lwrite_char
+#define lh_lwrite_char_le       lh_lwrite_char
+
 
 #ifdef LH_DECLARE_SHORT_NAMES
 
@@ -506,6 +506,7 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #define place_float_le          lh_place_float_le
 #define place_double            lh_place_double_be
 #define place_double_le         lh_place_double_le
+#define place_varint            lh_place_varint
 
 #define write_char              lh_write_char
 #define write_char_le           lh_write_char
@@ -519,5 +520,6 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #define write_float_le          lh_write_float_le
 #define write_double            lh_write_double_be
 #define write_double_le         lh_write_double_le
+#define write_varint            lh_write_varint
 
 #endif

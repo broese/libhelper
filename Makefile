@@ -14,7 +14,7 @@ ifeq ($(UNAME),Linux)
 endif
 
 #LIBOBJ=lh_image.o lh_compress.o 
-LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_dir.o lh_event.o
+LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_dir.o lh_event.o lh_compress.o
 
 all: test libhelper.a
 

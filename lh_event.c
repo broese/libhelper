@@ -35,7 +35,7 @@ int lh_poll_find(lh_pollarray *pa, int fd) {
 void lh_poll_remove(lh_pollarray *pa, int fd) {
     assert(pa);
     int i = lh_poll_find(pa,fd);
-    assert(i>0);
+    assert(i>=0);
 
     lh_multiarray_delete(pa->nfd, i, MAF(pa->poll),MAF(pa->data));
 }
@@ -43,7 +43,7 @@ void lh_poll_remove(lh_pollarray *pa, int fd) {
 short *lh_poll_mode(lh_pollarray *pa, int fd) {
     assert(pa);
     int i = lh_poll_find(pa,fd);
-    assert(i>0);
+    assert(i>=0);
 
     return &pa->poll[i].events;
 }
@@ -104,7 +104,7 @@ int lh_poll_getall(lh_pollarray *pa, int group, short mode, lh_polldata **pdp) {
 
 void lh_poll_dump(lh_pollarray *pa) {
     int i;
-    printf("POLLARRAY %p\n",pa);
+    printf("\n\n\nPOLLARRAY %p\n",pa);
 
     for(i=0; i<pa->nfd; i++) {
         printf("FD=%2d\n"
@@ -149,7 +149,8 @@ lh_conn * lh_conn_add(lh_pollarray *pa, int fd, int group, void *priv) {
 }
 
 void * lh_conn_remove(lh_conn *conn) {
-    int i = lh_poll_find(conn->pa, conn->fd);
+    lh_pollarray *pa = conn->pa;
+    int i = lh_poll_find(pa, conn->fd);
     if (i<0) return NULL;
 
     // delete everything in the lh_conn structure
@@ -159,7 +160,7 @@ void * lh_conn_remove(lh_conn *conn) {
     free(conn);
 
     // remove the file descriptor from polling
-    lh_poll_remove(conn->pa, conn->fd);
+    lh_poll_remove(pa, conn->fd);
 
     // return the private data in case user needs it
     return priv;
@@ -218,10 +219,12 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
                 //FIXME: handle errors
                 break;
             case LH_FILE_EOF:
+                printf("EOF on the connection\n");
                 lh_poll_r_off(conn->pa, conn->fd);
                 conn->status |= CONN_STATUS_REMOTE_EOF;
                 //TODO: pass EOF to the handler?
-                break;
+                handler(conn);
+                return;
             default: {
                 ssize_t consumed = handler(conn);
                 conn->rbuf.data_ridx += consumed;

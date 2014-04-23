@@ -146,8 +146,8 @@
  * \param to Index to move to
  * \param num Number of elements to move
  */
-#define lh_move(ptr, from, to, num) \
-    memmove(ptr+to, ptr+from, num*sizeof(*ptr));
+#define lh_move(ptr, from, to, num)                             \
+    memmove((ptr)+(to), (ptr)+(from), (num)*sizeof(*(ptr)));
 
 #ifndef LH_DEFAULT_GRAN
 #define LH_DEFAULT_GRAN 256
@@ -270,11 +270,11 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define _lh_arr_insert(ptr,cnt,gran,idx,clear) *({      \
-            lh_arr_resize(ptr,cnt,gran,cnt+1);          \
-            lh_move(ptr,idx,idx+1,(cnt)-(idx));         \
-            if (clear) lh_clear_ptr(ptr+idx);           \
-            ptr+idx;                                    \
+#define _lh_arr_insert(ptr,cnt,gran,idx,clear) *({          \
+            lh_arr_resize(ptr,cnt,gran,cnt+1);              \
+            lh_move((ptr),(idx),(idx)+1,((cnt)-(idx)-1));   \
+            if (clear) lh_clear_ptr((ptr)+(idx));           \
+            ((ptr)+(idx));                                  \
         })
 
 /*! \brief Resize the array to accomodate 1 new element at the given position.
