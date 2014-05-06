@@ -23,13 +23,15 @@
 #define LH_DECLARE_SHORT_NAMES 1
 
 #include "lh_buffers.h"
+#include "lh_arr.h"
+#include "lh_marr.h"
+#include "lh_strings.h"
 #include "lh_bytes.h"
 #include "lh_debug.h"
-#include "lh_files.h"
-#include "lh_net.h"
-#include "lh_event.h"
 
 #if 0
+#include "lh_files.h"
+#include "lh_net.h"
 #include "lh_event.h"
 #include "lh_dir.h"
 #include "lh_compress.h"
@@ -53,16 +55,30 @@ typedef struct model {
     int      nf;
 } model;
 
-////////////////////////////////////////////////////////////////////////////////
-
 #define PASSFAIL(cond) ( (cond) ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m" )
 
-#define TESTALIGN(n,a,r)                                        \
-    printf("align %ju,%ju => %ju (%s)\n",                       \
-           (uintmax_t)(n), (uintmax_t)a, (uintmax_t)ALIGN(n,a), \
-           PASSFAIL(ALIGN(n,a)==(r))                            \
-    );                                                          \
-    if (ALIGN(n,a)!=(r)) fail++;
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_buffers.h
+
+// alignment macro
+
+#define TESTALIGN(n,a,r)                                           \
+    printf("align (%2d bits) %ju,%ju => %ju (%s)\n",               \
+           (int)sizeof(n)*8,                                       \
+           (uintmax_t)(n), (uintmax_t)a, (uintmax_t)lh_align(n,a), \
+           PASSFAIL(lh_align(n,a)==(r))                            \
+          );                                                       \
+    if (lh_align(n,a)!=(r)) fail++;
 
 
 int test_align() {
@@ -81,6 +97,7 @@ int test_align() {
 
     TESTALIGN(0x100000000LL,0x80000000,0x100000000LL);
     TESTALIGN(0x100000000LL,0x100000000LL,0x100000000LL);
+    TESTALIGN(0x100000001LL,0x80000000,0x180000000LL);
     TESTALIGN(0x100000001LL,0x100000000LL,0x200000000LL);
 
     TESTALIGN(0xFFFFFFEDLL,0x1000,0x100000000LL);
@@ -90,28 +107,20 @@ int test_align() {
     TESTALIGN(a,0x1000,0x100000000LL);
     uint32_t b = 0xFFFFFFEDLL;
     TESTALIGN(b,0x1000,0);
-
-#if 0
     uint16_t c = 0xFFED;
     TESTALIGN(c,0x1000,0);
-#endif
+    uint8_t d = 0xFD;
+    TESTALIGN(d,0x10,0);
 
     TESTALIGN(0x100001234LL,0x1000,0x100002000LL);
     TESTALIGN(0x100001234LL,0x100,0x100001300LL);
     TESTALIGN(0x100001234LL,0x10,0x100001240LL);
 
-#if 0
-    TESTALIGN(123,100,200);
-    TESTALIGN(12345,100,12400);
-    TESTALIGN(1234567,100,1234600);
-    TESTALIGN(12345678,100,12345700);
-    TESTALIGN(123456789,100,123456800);
-    TESTALIGN(123456789123456789LL,1000,123456789123457000LL);
-#endif
-
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
+
+// clearing in plain arrays/buffers
 
 #define TEST_CLEAR(name,ptr,n,neg) {                        \
         int i,f=0;                                          \
@@ -134,17 +143,20 @@ int test_clear() {
     char *s2 = strdup("MNOPQR");
     char *s3 = strdup("abcdefghijklmnop");
 
-    CLEAR(str);
-    TEST_CLEAR("CLEAR",str,6,0);
-    CLEARP(s1);
-    TEST_CLEAR("CLEARP",s1,1,0);
-    CLEARN(s2,4);
-    TEST_CLEAR("CLEARN",s2,4,0);
-    TEST_CLEAR("CLEARN",s2+4,2,1);
-    CLEAR_RANGE(s3,3,7);
-    TEST_CLEAR("CLEAR_RANGE",s3,3,1);
-    TEST_CLEAR("CLEAR_RANGE",s3+3,7,0);
-    TEST_CLEAR("CLEAR_RANGE",s3+10,6,1);
+    lh_clear_obj(str);
+    TEST_CLEAR("lh_clear_obj",str,6,0);
+
+    lh_clear_ptr(s1);
+    TEST_CLEAR("lh_clear_ptr",s1,1,0);
+
+    lh_clear_num(s2,4);
+    TEST_CLEAR("lh_clear_num",s2,4,0);
+    TEST_CLEAR("lh_clear_num",s2+4,2,1);
+
+    lh_clear_range(s3,3,7);
+    TEST_CLEAR("lh_clear_range",s3,3,1);
+    TEST_CLEAR("lh_clear_range",s3+3,7,0);
+    TEST_CLEAR("lh_clear_range",s3+10,6,1);
 
     free(s1);
     free(s2);
@@ -153,6 +165,8 @@ int test_clear() {
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
+
+// allocation of arrays/buffers
 
 #define TEST_ALLOC(name, ptr, size) {                   \
         int i,f=0;                                      \
@@ -171,23 +185,27 @@ int test_alloc() {
     printf("\n\n====== Testing allocation macros ======\n");
     int fail = 0;
     
-    CREATE(vertex,v);
-    TEST_ALLOC("CREATE",v,sizeof(vertex));
-    CREATEN(face,fc,30);
-    TEST_ALLOC("CREATEN",fc,sizeof(face)*30);
-    CREATEB(buf,100);
-    TEST_ALLOC("CREATEB",buf,100);
+    lh_create_obj(vertex,v);
+    TEST_ALLOC("lh_create_obj",v,sizeof(vertex));
+
+    lh_create_buf(buf,100);
+    TEST_ALLOC("lh_create_buf",buf,100);
+
+    lh_create_num(face,fc,30);
+    TEST_ALLOC("lh_create_num",fc,sizeof(face)*30);
 
     free(v);
     free(fc);
     free(buf);
 
-    ALLOC(v);
-    TEST_ALLOC("ALLOC",v,sizeof(vertex));
-    ALLOCN(fc,80);
-    TEST_ALLOC("ALLOCN",fc,sizeof(face)*80);
-    ALLOCB(buf,10000);
-    TEST_ALLOC("ALLOCB",buf,10000);
+    lh_alloc_obj(v);
+    TEST_ALLOC("lh_alloc_obj",v,sizeof(vertex));
+
+    lh_alloc_num(fc,80);
+    TEST_ALLOC("lh_alloc_num",fc,sizeof(face)*80);
+
+    lh_alloc_buf(buf,10000);
+    TEST_ALLOC("lh_alloc_buf",buf,10000);
 
     free(v);
     free(fc);
@@ -197,12 +215,23 @@ int test_alloc() {
     return fail;
 }
 
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_arr.h
+
 #define TEST_ARRAY(title,name,check) {                          \
         int sum=0,i,f=0;                                        \
-        for(i=0; i<name##_cnt; i++) sum += (int)name##_ptr[i];  \
+        for(i=0; i<C(name); i++) sum += (int)P(name)[i];        \
         f = (sum != (check));                                   \
         fail += f;                                              \
-        printf("%s: %s\n", title, PASSFAIL(!f));                 \
+        printf("%s: %s\n", title, PASSFAIL(!f));                \
     }
         
 
@@ -212,34 +241,34 @@ int test_arrays() {
 
     int i,s;
 
-    _BUFi(buf);
+    BUFI(buf);
     lh_arr_allocate(GAR(buf),200);
 
-    for(i=0; i<buf_cnt; i++) buf_ptr[i] = (uint8_t)i;
-    TEST_ARRAY("lh_arr_allocate",buf,199*buf_cnt/2);
+    for(i=0; i<C(buf); i++) P(buf)[i] = (uint8_t)i;
+    TEST_ARRAY("lh_arr_allocate",buf,199*C(buf)/2);
 
     for(i=200; i<1000; i++) {
-        arr_resize(GAR(buf),i+1);
-        buf_ptr[i] = (uint8_t)i;
+        lh_arr_add(GAR(buf),1);
+        P(buf)[i] = (uint8_t)i;
     }
     for(i=0,s=0; i<1000; i++) s+=(uint8_t)i;
     TEST_ARRAY("lh_arr_add",buf,s);
 
-    arr_new(GAR(buf)) = 0x55;
+    *lh_arr_new(GAR(buf)) = 0x55;
     s+=0x55;
     TEST_ARRAY("lh_arr_new",buf,s);
 
-    arr_insert(GAR(buf),900) = 0xAA;
+    *lh_arr_insert(GAR(buf),900) = 0xAA;
     s+=0xAA;
     TEST_ARRAY("lh_arr_insert",buf,s);
 
-    arr_delete(AR(buf),700);
-    arr_delete(AR(buf),500);
-    arr_delete(AR(buf),300);
+    lh_arr_delete(GAR(buf),700);
+    lh_arr_delete(GAR(buf),500);
+    lh_arr_delete(GAR(buf),300);
     s -= (700%256)+(500%256)+(300%256);
     TEST_ARRAY("lh_array_delete",buf,s);
 
-    arr_delrange(AR(buf),100,5);
+    lh_arr_delete_range(GAR(buf),100,5);
     s -= 100+101+102+103+104;
     TEST_ARRAY("lh_array_delete_range", buf,s);
 
@@ -249,8 +278,127 @@ int test_arrays() {
     return fail;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_marr.h
+
+typedef struct {
+    int cnt;
+    char              * status;
+    uint16_t          * flags;
+    const char       ** name;
+    double            * coord;
+} ma;
+
+int print_ma(ma *x) {
+    int i;
+    printf("cnt:%d status:%p flags:%p name:%p\n",
+           x->cnt,x->status,x->flags,x->name);
+    for(i=0; i<x->cnt; i++) {
+        printf("%2d  %c %04x %s\n",i,x->status[i],x->flags[i],
+               x->name[i]?x->name[i]:"<undef>");
+    }
+
+    return 0;
+}
+
+int test_multiarrays() {
+    printf("\n\n====== Testing multiarrays ======\n");
+    int fail = 0, f;
+
+    ma x; CLEAR(x);
+    print_ma(&x);
+
+    lh_multiarray_allocate(x.cnt, 3, MAF(x.status), MAF(x.flags), MAF(x.name));
+    x.status[0]='A'; x.status[1]='B'; x.status[2]='C';
+    x.flags[0]=0x000a;x.flags[1]=0x0b00;x.flags[2]=0xC000;
+    x.name[0]="Alice";x.name[1]="Bob";x.name[2]="Charlie";
+    print_ma(&x);
+
+    lh_multiarray_resize(x.cnt, 17, MAF(x.status), MAF(x.flags), MAF(x.name));
+    x.status[6]='G'; x.status[7]='H'; x.status[8]='I';
+    x.flags[6]=0xaaaa;x.flags[7]=0x1111;x.flags[8]=0x5555;
+    x.name[6]="George";x.name[7]="Henry";x.name[8]="Irene";
+    print_ma(&x);
+
+    lh_multiarray_resize(x.cnt, 8, MAF(x.status), MAF(x.flags), MAF(x.name));
+    print_ma(&x);
+
+    lh_multiarray_delete_range(x.cnt, 3, 2, MAF(x.status), MAF(x.flags), MAF(x.name));
+    print_ma(&x);
+
+    free(x.status);
+    free(x.flags);
+    free(x.name);
+    free(x.coord);
+
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_strings.h
+
+
+// bprintf
+int test_bprintf() {
+    printf("\n\n====== Testing bprintf ======\n");
+    int fail = 0, f;
+
+    BUFI(test);
+
+    int res;
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,C(test));
+    hexdump(AR(test));
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,C(test));
+    hexdump(AR(test));
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,C(test));
+    hexdump(AR(test));
+
+    C(test) = LH_BUFPRINTF_GRAN;
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,C(test));
+    hexdump(AR(test));
+
+    C(test) = 512;
+    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
+    printf("res=%d len=%zd\n",res,C(test));
+    hexdump(AR(test));
+    
+    lh_arr_free(AR(test));
+    
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_bytes.h
+
+// byte swapping
 #define TEST_BSWAP(func,a,b) {                      \
         int f=0;                                    \
         f = ( func(a) != b );                       \
@@ -292,6 +440,8 @@ int test_bswap() {
     return fail;
 }
 
+
+// stream parsing
 #define TEST_PARSE(type,val,check) {                                    \
         f = (val != check);                                             \
         fail += f;                                                      \
@@ -324,8 +474,6 @@ int test_bswap() {
     f += (ptr != buf+rlen);                                  \
     fail += f;                                               \
     printf("lh_lread len=%d %s\n", len, PASSFAIL(!f));
-
-
 
 int test_stream() {
     printf("\n\n====== Testing bytestream reading ======\n");
@@ -419,6 +567,7 @@ typedef struct {
 } test_t;
 
 #if 0
+// unpack
 int test_unpack() {
     printf("\n\n====== Testing unpack ======\n");
     int fail = 0, f;
@@ -444,6 +593,7 @@ int test_unpack() {
 }
 #endif
 
+// stream writing
 #define TEST_WSTREAM(func, buf1, buf2, len) {        \
         int f=0;                                     \
         f = (memcmp(buf1, buf2, len) != 0);          \
@@ -491,6 +641,8 @@ int test_wstream() {
     return fail;
 }
 
+
+#if 0
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef HAVE_OPENSSL
@@ -597,96 +749,6 @@ int test_files() {
     return fail;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-    int cnt;
-    char              * status;
-    uint16_t          * flags;
-    const char       ** name;
-    double            * coord;
-} ma;
-
-int print_ma(ma *x) {
-    int i;
-    printf("cnt:%d status:%p flags:%p name:%p\n",
-           x->cnt,x->status,x->flags,x->name);
-    for(i=0; i<x->cnt; i++) {
-        printf("%2d  %c %04x %s\n",i,x->status[i],x->flags[i],x->name[i]?x->name[i]:"<undef>");
-    }
-
-    return 0;
-}
-
-int test_multiarrays() {
-    printf("\n\n====== Testing multiarrays ======\n");
-    int fail = 0, f;
-
-    ma x; CLEAR(x);
-    print_ma(&x);
-
-    lh_multiarray_allocate(x.cnt, 3, MAF(x.status), MAF(x.flags), MAF(x.name));
-    x.status[0]='A'; x.status[1]='B'; x.status[2]='C';
-    x.flags[0]=0x000a;x.flags[1]=0x0b00;x.flags[2]=0xC000;
-    x.name[0]="Alice";x.name[1]="Bob";x.name[2]="Charlie";
-    print_ma(&x);
-
-    lh_multiarray_resize(x.cnt, 17, MAF(x.status), MAF(x.flags), MAF(x.name));
-    x.status[6]='G'; x.status[7]='H'; x.status[8]='I';
-    x.flags[6]=0xaaaa;x.flags[7]=0x1111;x.flags[8]=0x5555;
-    x.name[6]="George";x.name[7]="Henry";x.name[8]="Irene";
-    print_ma(&x);
-
-    lh_multiarray_resize(x.cnt, 8, MAF(x.status), MAF(x.flags), MAF(x.name));
-    print_ma(&x);
-
-    lh_multiarray_delete_range(x.cnt, 3, 2, MAF(x.status), MAF(x.flags), MAF(x.name));
-    print_ma(&x);
-
-    free(x.status);
-    free(x.flags);
-    free(x.name);
-    free(x.coord);
-
-
-    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
-    return fail;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-int test_bprintf() {
-    printf("\n\n====== Testing bprintf ======\n");
-    int fail = 0, f;
-
-    _BUFi(test);
-
-    int res;
-    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(AR(test));
-    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(AR(test));
-    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(AR(test));
-
-    test_cnt = LH_BUFPRINTF_GRAN;
-    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(AR(test));
-
-    test_cnt = 512;
-    res = bprintf(AR(test),"Hello World! ptr=%p len=%zd (%s:%d)\n",AR(test),__func__,__LINE__);
-    printf("res=%d len=%zd\n",res,test_cnt);
-    hexdump(AR(test));
-    
-    lh_arr_free(AR(test));
-    
-    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
-    return fail;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -858,10 +920,62 @@ int testshit() {
     testhex("");
 }
 
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void lh_dirwalk_test(const char * basedir);
+int test_module_buffers() {
+    int fail=0;
+
+    fail += test_align();
+    fail += test_clear();
+    fail += test_alloc();
+
+    return fail;
+}
+
+int test_module_arr() {
+    int fail=0;
+
+    fail += test_arrays();
+
+    return fail;
+}
+
+int test_module_marr() {
+    int fail=0;
+
+    fail += test_multiarrays();
+
+    return fail;
+}
+
+int test_module_strings() {
+    int fail=0;
+
+    fail += test_bprintf();
+    //fail += test_regexp();
+    //fail += test_args();
+
+    return fail;
+}
+
+int test_module_bytes() {
+    int fail=0;
+
+    fail += test_bswap();
+    fail += test_stream();
+    fail += test_wstream();
+    //fail += test_unpack();
+
+    return fail;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+//void lh_dirwalk_test(const char * basedir);
+
 
 int main(int ac, char **av) {
 #ifdef HAVE_MTRACE
@@ -870,26 +984,19 @@ int main(int ac, char **av) {
 #endif
 #endif
 
+    uint16_t c = 0xffed;
+    c++;
+    printf("%04x\n",(uint16_t)((0xfff|c)+1)   );
+
     int fail = 0;
 
-    /*
-    //// lh_buffers.h
-    fail += test_align();
-    fail += test_clear();
-    fail += test_alloc();
-    fail += test_arrays();
-    fail += test_multiarrays();
-    fail += test_bprintf();
-    */
+    fail += test_module_buffers();
+    fail += test_module_arr();
+    fail += test_module_marr();
+    fail += test_module_strings();
+    fail += test_module_bytes();
     
     
-    //// lh_bytes.h
-    //fail += test_bswap();
-    fail += test_stream();
-    fail += test_wstream();
-    //fail += test_unpack();
-    
-
     //// lh_files.h
     //fail += test_files();
     

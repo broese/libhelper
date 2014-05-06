@@ -13,16 +13,13 @@ ifeq ($(UNAME),Linux)
 	LIBS += -lcrypto
 endif
 
-#LIBOBJ=lh_image.o lh_compress.o 
-LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_dir.o lh_event.o lh_compress.o
+#LIBOBJ=lh_image.o lh_compress.o lh_files.o lh_net.o lh_dir.o lh_event.o
+LIBOBJ=lh_debug.o
 
 all: test libhelper.a
 
 libhelper.a: $(LIBOBJ)
 	$(AR) rcs $@ $^
-
-test2: test2.o
-	$(CC) -o $@ $^
 
 test: main.o $(LIBOBJ)
 	$(CC) -o $@ $^ $(LIBS)
@@ -30,7 +27,7 @@ test: main.o $(LIBOBJ)
 .c.o:
 	$(CC) $(CFLAGS) $(DEFS) $(CONFIG) -o $@ -c $<
 
-main.o : lh_buffers.h lh_files.h lh_debug.h lh_compress.h lh_image.h lh_event.h lh_dir.h config.h
+main.o: lh_buffers.h lh_arr.h lh_marr.h lh_strings.h lh_files.h lh_debug.h lh_compress.h lh_image.h lh_event.h lh_dir.h config.h
 
 clean:
 	rm -f *.o *~ *.a test test2 mtrace
