@@ -53,9 +53,9 @@
 #define LH_DEFAULT_GRAN 256
 #endif
 
-#define P(name)  p_##name
-#define C(name)  c_##name
-#define G(name)  g_##name
+#define P(name)  name##_p
+#define C(name)  name##_c
+#define G(name)  name##_g
 #define AR(name) P(name),C(name)
 
 #define GAR(name) AR(name),LH_DEFAULT_GRAN

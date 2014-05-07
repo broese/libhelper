@@ -13,8 +13,8 @@ ifeq ($(UNAME),Linux)
 	LIBS += -lcrypto
 endif
 
-#LIBOBJ=lh_image.o lh_compress.o lh_files.o lh_net.o lh_dir.o lh_event.o
-LIBOBJ=lh_debug.o
+#LIBOBJ=lh_image.o lh_compress.o lh_net.o lh_dir.o lh_event.o
+LIBOBJ=lh_debug.o lh_files.o
 
 all: test libhelper.a
 

@@ -28,9 +28,9 @@
 #include "lh_strings.h"
 #include "lh_bytes.h"
 #include "lh_debug.h"
+#include "lh_files.h"
 
 #if 0
-#include "lh_files.h"
 #include "lh_net.h"
 #include "lh_event.h"
 #include "lh_dir.h"
@@ -642,8 +642,16 @@ int test_wstream() {
 }
 
 
-#if 0
+
+
+
+
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
+///// lh_files.h
 
 #ifdef HAVE_OPENSSL
 #include <openssl/md5.h>
@@ -748,6 +756,13 @@ int test_files() {
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
+
+
+
+
+#if 0
+////////////////////////////////////////////////////////////////////////////////
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -971,6 +986,14 @@ int test_module_bytes() {
     return fail;
 }
 
+int test_module_files() {
+    int fail=0;
+
+    fail += test_files();
+
+    return fail;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -995,11 +1018,10 @@ int main(int ac, char **av) {
     fail += test_module_marr();
     fail += test_module_strings();
     fail += test_module_bytes();
+    fail += test_module_files();
     
-    
-    //// lh_files.h
-    //fail += test_files();
-    
+
+
     //// lh_net.h
     //// lh_event.h
     //test_event();

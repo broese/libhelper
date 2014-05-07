@@ -131,9 +131,6 @@ ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ..
 ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) {
     if (!bo || fd<0) return LH_FILE_INVALID;
     
-    if (!bo->data_gran) // granularity was not specified - use default
-        bo->data_gran = LH_BUF_DEFAULT_GRAN;
-
     // if no length was supplied, attempt to determine how much will be read
     ssize_t rsize = length;
     if (length < 0) {
@@ -145,10 +142,10 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) 
         if (fsize < 0) {
             // the file size cannot be determined, we will assume the default
             // LH_READ_SIZELESS_FACTOR * granularity, 
-            rsize = LH_READ_SIZELESS_FACTOR * bo->data_gran;
+            rsize = LH_READ_SIZELESS_FACTOR * LH_BUF_DEFAULT_GRAN;
 
             // trim it to the next granularity boundary, so we get a clean total size
-            ssize_t rem = bo->data_cnt & (bo->data_gran-1);
+            ssize_t rem = C(bo->data) & (LH_BUF_DEFAULT_GRAN-1);
             rsize -= rem;
         }
         else {
@@ -163,15 +160,15 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) 
     }
 
     // resize the buffer
-    ssize_t widx = bo->data_cnt;
-    lh_arr_add(AR(bo->data), bo->data_gran, rsize);
+    ssize_t widx = C(bo->data);
+    lh_arr_add(GAR4(bo->data), rsize);
 
     // read as in a static buffer, then adjust the buffer info
-    ssize_t rbytes = lh_read_static_at(fd, bo->data_ptr+widx, rsize, offset);
+    ssize_t rbytes = lh_read_static_at(fd, P(bo->data)+widx, rsize, offset);
     if (rbytes < 0)
-        bo->data_cnt = widx;
+        C(bo->data) = widx;
     else
-        bo->data_cnt = widx + rbytes;
+        C(bo->data) = widx + rbytes;
 
     return rbytes;
 }
@@ -184,11 +181,11 @@ ssize_t lh_read_alloc_at(int fd, uint8_t **bufp, ssize_t length, off_t offset, .
 
     ssize_t rbytes = lh_read_buf_at(fd, &bo, length, offset);
     if (rbytes < 0) {
-        if (bo.data_ptr) free(bo.data_ptr);
+        if (P(bo.data)) free(P(bo.data));
         *bufp = NULL;
     }
     else {
-        *bufp = bo.data_ptr;
+        *bufp = P(bo.data);
     }
     return rbytes;
 }
@@ -207,11 +204,8 @@ ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...) {
             LH_ERROR(LH_FILE_ERROR, "Failed to seek to offset %jd", (intmax_t) offset);
     }
 
-    //printf("%s:%d fd=%d buf=%p len=%zd\n",__func__,__LINE__,fd,buf,length);
-
     // attempt to write
     ssize_t wbytes = write(fd, buf, length);
-    //printf("%s:%d res:%d %d %s\n",__func__,__LINE__,wbytes,errno,strerror(errno));
     
     if (wbytes < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -226,29 +220,26 @@ ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...) {
 ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) {
     if (!bo || fd<0) return LH_FILE_INVALID;
     
-    if (!bo->data_gran) // granularity was not specified - use default
-        bo->data_gran = LH_BUF_DEFAULT_GRAN;
-
-    ssize_t wsize = (length<0) ? (bo->data_cnt-bo->data_ridx) : length;
-    ssize_t wbytes = lh_write_at(fd, bo->data_ptr+bo->data_ridx, wsize, offset);
+    ssize_t wsize = (length<0) ? (C(bo->data)-bo->ridx) : length;
+    ssize_t wbytes = lh_write_at(fd, P(bo->data)+bo->ridx, wsize, offset);
 
     if (wbytes >= 0) {
-        bo->data_ridx+=wbytes;
-        wsize = bo->data_cnt-bo->data_ridx;
+        bo->ridx+=wbytes;
+        wsize = C(bo->data)-bo->ridx;
         if (wsize > 0) {
             // some data remains in the buffer, should we compact it?
-            if (lh_align(bo->data_cnt,bo->data_gran) >
-                lh_align(bo->data_ridx,bo->data_gran) &&
-                wsize < bo->data_gran ) {
-                lh_move(bo->data_ptr, bo->data_ridx, 0, wsize);
-                bo->data_ridx=0;
-                bo->data_cnt=wsize;
+            if (lh_align(C(bo->data),LH_BUF_DEFAULT_GRAN) >
+                lh_align(bo->ridx,LH_BUF_DEFAULT_GRAN) &&
+                wsize < LH_BUF_DEFAULT_GRAN ) {
+                lh_move(P(bo->data), bo->ridx, 0, wsize);
+                bo->ridx=0;
+                C(bo->data)=wsize;
             }
         }
         else {
             // all data was written, reset the positions in the buffer object
-            bo->data_cnt=0;
-            bo->data_ridx=0;
+            C(bo->data)=0;
+            bo->ridx=0;
         }
     }
 

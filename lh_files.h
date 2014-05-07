@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "lh_arr.h"
+
 #ifndef LH_FILE_CREAT_MODE
 #define LH_FILE_CREAT_MODE 0777
 #endif
@@ -38,7 +40,7 @@ int lh_open_append(const char *path, off_t *sizep);
 #define LH_FILE_ERROR   -3  // error writing/reading file
 
 #ifndef LH_READ_SIZELESS_FACTOR
-#define LH_READ_SIZELESS_FACTOR 4
+#define LH_READ_SIZELESS_FACTOR 16
 #endif
 
 #ifndef LH_BUF_DEFAULT_GRAN
@@ -46,11 +48,8 @@ int lh_open_append(const char *path, off_t *sizep);
 #endif
 
 typedef struct _lh_buf_t {
-    uint8_t * data_ptr;
-    ssize_t   data_cnt;  // this is actually the "writing index"
-                         // maybe we can define the alternative macro AR() in the scope of lh_files
-    ssize_t   data_ridx; // read index - this can be used by the write functions
-    int       data_gran;
+    lh_buf_declare(data);
+    ssize_t ridx; // read index - this can be used by the write functions
 } lh_buf_t;
 
 ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...);
