@@ -29,9 +29,9 @@
 #include "lh_bytes.h"
 #include "lh_debug.h"
 #include "lh_files.h"
+#include "lh_net.h"
 
 #if 0
-#include "lh_net.h"
 #include "lh_event.h"
 #include "lh_dir.h"
 #include "lh_compress.h"
@@ -760,6 +760,44 @@ int test_files() {
 
 
 
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_net.h
+
+
+// DNS
+
+#define TEST_DNS(name, addr) {                       \
+        int f=0;                                     \
+        f = (addr != dns_addr_ipv4(name));           \
+        fail += f;                                   \
+        printf("%s: %s\n", name, PASSFAIL(!f));      \
+    }
+
+int test_dns() {
+    printf("\n\n====== Testing DNS functions ======\n");
+    int fail = 0, f;
+
+    TEST_DNS("0.0.0.0",0x00000000);
+    TEST_DNS("127.0.0.1",0x7f000001);
+    TEST_DNS("224.0.0.1",0xe0000001);
+    TEST_DNS("255.255.255.252",0xfffffffc);
+    TEST_DNS("255.255.255.255",0xffffffff);
+    TEST_DNS("localhost",0x7f000001);
+    TEST_DNS("this.host.does.not.exist.com",0xffffffff);
+    TEST_DNS("slashdot.org",0xd822b52d);
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+
+
+
 #if 0
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -838,35 +876,6 @@ int test_event2() {
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
-
-#if 0
-#define TEST_DNS(name, addr) {                       \
-        int f=0;                                     \
-        f = (addr != dns_addr_ipv4(name));           \
-        fail += f;                                   \
-        printf("%s: %s\n", name, PASSFAIL(!f));      \
-    }
-
-int test_dns() {
-    printf("\n\n====== Testing DNS functions ======\n");
-    int fail = 0, f;
-
-    TEST_DNS("0.0.0.0",0x00000000);
-    TEST_DNS("127.0.0.1",0x7f000001);
-    TEST_DNS("224.0.0.1",0xe0000001);
-    TEST_DNS("255.255.255.252",0xfffffffc);
-    TEST_DNS("255.255.255.255",0xffffffff);
-    TEST_DNS("localhost",0x7f000001);
-    TEST_DNS("washuu.no-ip.biz",0x58493c51);
-    TEST_DNS("washuu.homeip.net",0xffffffff);
-    TEST_DNS("slashdot.org",0xd822b52d);
-
-    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
-    return fail;
-}
-
-
-#endif
 
 #define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode))
 #define sz(path) printf("%s : %jd\n", path, lh_filesize_path(path))
@@ -969,6 +978,7 @@ int test_module_strings() {
     int fail=0;
 
     fail += test_bprintf();
+    //fail += test_heximport();
     //fail += test_regexp();
     //fail += test_args();
 
@@ -990,6 +1000,16 @@ int test_module_files() {
     int fail=0;
 
     fail += test_files();
+
+    return fail;
+}
+
+int test_module_net() {
+    int fail=0;
+
+    //fail += test_tcp();
+    //fail += test_udp();
+    fail += test_dns();
 
     return fail;
 }
@@ -1019,6 +1039,7 @@ int main(int ac, char **av) {
     fail += test_module_strings();
     fail += test_module_bytes();
     fail += test_module_files();
+    fail += test_module_net();
     
 
 
