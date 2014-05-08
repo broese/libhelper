@@ -31,10 +31,10 @@
 #include "lh_files.h"
 #include "lh_net.h"
 #include "lh_compress.h"
+#include "lh_dir.h"
 
 #if 0
 #include "lh_event.h"
-#include "lh_dir.h"
 #include "lh_image.h"
 #endif
 
@@ -860,6 +860,53 @@ int test_zlib() {
 
 
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_dir
+
+// dirwalk
+
+int test_dirwalk() {
+    printf("\n\n====== Testing dirwalk ======\n");
+    int fail = 0, f;
+    
+    lh_dirwalk * dw = lh_dirwalk_create(".",LH_DW_DEFAULTS);
+
+    lh_dwres dr;
+
+    while(1) {
+        int res = lh_dirwalk_next(dw,&dr);
+        if (res < 0) {
+            printf("ERROR\n");
+            continue;
+        }
+
+        int i;
+        for(i=0; i<dr.level; i++) printf(" ");
+        char *codes = "*FD-S";
+
+        char path[PATH_MAX+1];
+        if (dr.path && dr.path[0])
+            sprintf(path, "%s/%s",dr.path,dr.name);
+        else
+            sprintf(path, "%s", dr.name);
+
+        if (res)
+            printf("%c %s\n",codes[dr.type],path);
+        else {
+            printf("*\n");
+            break;
+        }
+    }
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+
+
 #if 0
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1085,6 +1132,14 @@ int test_module_compress() {
     return fail;
 }
 
+int test_module_dir() {
+    int fail=0;
+
+    fail += test_dirwalk();
+
+    return fail;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1112,6 +1167,7 @@ int main(int ac, char **av) {
     fail += test_module_files();
     fail += test_module_net();
     fail += test_module_compress();
+    fail += test_module_dir();
     
 
 

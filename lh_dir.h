@@ -9,6 +9,7 @@
 #endif
 
 #include "lh_buffers.h"
+#include "lh_arr.h"
 #include "lh_debug.h"
 
 /* Note: FTS-based implementation was dropped due to lack of 
@@ -75,5 +76,3 @@ int lh_dirwalk_next(lh_dirwalk *dw, lh_dwres *dr);
 //TODO: ignore hidden files flag
 //TODO/CLARIFY: handle files without read access
 //TODO: external filter
-
-void lh_dirwalk_test(const char * basedir);

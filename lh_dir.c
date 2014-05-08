@@ -67,7 +67,7 @@ lh_dirwalk * lh_dirwalk_create(const char * basepath, int flags) {
     //NOTE: ds->path is NULL for the top dwdir object
 
     // allocate just one object in our file list - our basepath
-    lh_dwfile * df = &(lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN));
+    lh_dwfile * df = lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN);
 
 #ifdef HAVE_STRNLEN
     ssize_t nlen = strnlen(basepath, dw->path_max);
@@ -210,7 +210,7 @@ static int lh_dirwalk_readdir(lh_dirwalk *dw) {
                 continue;
         
         // allocate a new entry in the file list
-        lh_dwfile * newfile = &(lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN));
+        lh_dwfile * newfile = lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN);
 
         newfile->name = strdup(name);
 
@@ -388,38 +388,3 @@ int lh_dirwalk_next(lh_dirwalk *dw, lh_dwres *dr) {
     }
     return res;
 }
-
-
-void lh_dirwalk_test(const char * basedir) {
-    lh_dirwalk * dw = lh_dirwalk_create(basedir,LH_DW_DEFAULTS);
-
-    lh_dwres dr;
-
-    while(1) {
-        int res = lh_dirwalk_next(dw,&dr);
-        if (res < 0) {
-            printf("ERROR\n");
-            continue;
-        }
-
-        int i;
-        for(i=0; i<dr.level; i++) printf(" ");
-        char *codes = "*FD-S";
-
-        char path[PATH_MAX+1];
-        if (dr.path && dr.path[0])
-            sprintf(path, "%s/%s",dr.path,dr.name);
-        else
-            sprintf(path, "%s", dr.name);
-
-        if (res)
-            printf("%c %s\n",codes[dr.type],path);
-        else {
-            printf("*\n");
-            break;
-        }
-    }
-}
-
-
-
