@@ -3,6 +3,8 @@
 #include "lh_debug.h"
 #include "lh_compress.h"
 #include "lh_buffers.h"
+#include "lh_arr.h"
+
 #include <zlib.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -156,31 +158,31 @@ ssize_t lh_zlib_decode_to(const uint8_t *ibuf, ssize_t ilen, uint8_t *obuf, ssiz
 
 
 uint8_t * lh_zlib_encode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
-    _BUFi(out);
+    lh_buf_declare_i(out);
     uint8_t *wp = zlib_internal(OP_ENCODE, FORMAT_ZLIB,
                                 Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
-                                ibuf, ilen, &out_ptr, &out_cnt, 0);
+                                ibuf, ilen, &P(out), &C(out), 0);
     if (wp) {
-        *olength = wp-out_ptr;
-        return out_ptr;
+        *olength = wp-P(out);
+        return P(out);
     }
     else {
-        if (out_ptr) free(out_ptr);
+        if (P(out)) free(P(out));
         *olength = 0;
         return NULL;
     }
 }
 uint8_t * lh_zlib_decode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
-    _BUFi(out);
+    lh_buf_declare_i(out);
     uint8_t *wp = zlib_internal(OP_DECODE, FORMAT_ZLIB,
                                 Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
-                                ibuf, ilen, &out_ptr, &out_cnt, 0);
+                                ibuf, ilen, &P(out), &C(out), 0);
     if (wp) {
-        *olength = wp-out_ptr;
-        return out_ptr;
+        *olength = wp-P(out);
+        return P(out);
     }
     else {
-        if (out_ptr) free(out_ptr);
+        if (P(out)) free(P(out));
         *olength = 0;
         return NULL;
     }
@@ -202,32 +204,32 @@ ssize_t gzip_decode_to(const uint8_t *ibuf, ssize_t ilen, uint8_t *obuf, ssize_t
 
 
 uint8_t * lh_gzip_encode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
-    _BUFi(out);
+    lh_buf_declare_i(out);
     uint8_t *wp = zlib_internal(OP_ENCODE, FORMAT_GZIP,
                                 Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
-                                ibuf, ilen, &out_ptr, &out_cnt, 0);
+                                ibuf, ilen, &P(out), &C(out), 0);
     if (wp) {
-        *olength = wp-out_ptr;
-        return out_ptr;
+        *olength = wp-P(out);
+        return P(out);
     }
     else {
-        if (out_ptr) free(out_ptr);
+        if (P(out)) free(P(out));
         *olength = 0;
         return NULL;
     }
 }
 
 uint8_t * lh_gzip_decode(const uint8_t *ibuf, ssize_t ilen, ssize_t *olength) {
-    _BUFi(out);
+    lh_buf_declare_i(out);
     uint8_t *wp = zlib_internal(OP_DECODE, FORMAT_GZIP,
                                 Z_DEFAULT_COMPRESSION, AM_DYNAMIC,
-                                ibuf, ilen, &out_ptr, &out_cnt, 0);
+                                ibuf, ilen, &P(out), &C(out), 0);
     if (wp) {
-        *olength = wp-out_ptr;
-        return out_ptr;
+        *olength = wp-P(out);
+        return P(out);
     }
     else {
-        if (out_ptr) free(out_ptr);
+        if (P(out)) free(P(out));
         *olength = 0;
         return NULL;
     }

@@ -30,11 +30,11 @@
 #include "lh_debug.h"
 #include "lh_files.h"
 #include "lh_net.h"
+#include "lh_compress.h"
 
 #if 0
 #include "lh_event.h"
 #include "lh_dir.h"
-#include "lh_compress.h"
 #include "lh_image.h"
 #endif
 
@@ -689,7 +689,6 @@ int check_data(uint8_t * data, ssize_t length, const char * hash) {
 #else
     md5_calc(md,data,length);
 #endif
-
     return (memcmp(h,md,16)!=0);
 }
 
@@ -790,6 +789,69 @@ int test_dns() {
     TEST_DNS("this.host.does.not.exist.com",0xffffffff);
     TEST_DNS("slashdot.org",0xd822b52d);
 
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+///// lh_compress.h
+
+
+// gzip
+
+int test_gzip() {
+    printf("\n\n====== Testing compression ======\n");
+    int fail = 0, f;
+
+    fail += create_test_file();
+
+    uint8_t * data;
+    ssize_t len = lh_load_alloc("testfile.dat", &data);
+    if (len!=1048576) { fail++; goto fail; }
+
+    ssize_t clen;
+    uint8_t * cdata = lh_gzip_encode(data, len, &clen);
+    //TESTFILE(lh_gzip_encode,cdata,clen,"ed0af770dbbb1165df5b72949ad053ea");
+    ssize_t dlen;
+    uint8_t * ddata = lh_gzip_decode(cdata, clen, &dlen);
+    TESTFILE(lh_gzip_decode,ddata,dlen,"71D037712F43C91105D83A024A66ED41");
+
+    free(cdata);
+    free(ddata);
+
+ fail:
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
+
+// zlib
+
+int test_zlib() {
+    printf("\n\n====== Testing compression ======\n");
+    int fail = 0, f;
+
+    fail += create_test_file();
+
+    uint8_t * data;
+    ssize_t len = lh_load_alloc("testfile.dat", &data);
+    if (len!=1048576) { fail++; goto fail; }
+
+    ssize_t clen;
+    uint8_t * cdata = lh_zlib_encode(data, len, &clen);
+    TESTFILE(lh_zlib_encode,cdata,clen,"99612935faaca1f8e3c5c9711ba42f81");
+    ssize_t dlen;
+    uint8_t * ddata = lh_zlib_decode(cdata, clen, &dlen);
+    TESTFILE(lh_zlib_decode,ddata,dlen,"71D037712F43C91105D83A024A66ED41");
+
+    free(cdata);
+    free(ddata);
+
+ fail:
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
@@ -1014,6 +1076,15 @@ int test_module_net() {
     return fail;
 }
 
+int test_module_compress() {
+    int fail=0;
+
+    fail += test_gzip();
+    fail += test_zlib();
+
+    return fail;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1040,14 +1111,13 @@ int main(int ac, char **av) {
     fail += test_module_bytes();
     fail += test_module_files();
     fail += test_module_net();
+    fail += test_module_compress();
     
 
 
-    //// lh_net.h
     //// lh_event.h
     //test_event();
     //test_event2();
-    //test_dns();
 
     //lh_dirwalk_test(av[1]?av[1]:".");
 
