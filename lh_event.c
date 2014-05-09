@@ -1,4 +1,9 @@
 #include "lh_event.h"
+#include "lh_debug.h"
+#include "lh_buffers.h"
+#include "lh_arr.h"
+#include "lh_marr.h"
+
 #include <unistd.h>
 #include <assert.h>
 #include <sys/socket.h>
@@ -118,11 +123,11 @@ void lh_poll_dump(lh_pollarray *pa) {
         if (pa->data[i].group==3) {
             lh_conn *conn = pa->data[i].priv;
             printf("    pa=%p fd=%d status=%d priv=%p\n"
-                   "    rbuf(%p %zd %zd gran=%d)\n"
-                   "    wbuf(%p %zd %zd gran=%d)\n",
+                   "    rbuf(%p %zd %zd)\n"
+                   "    wbuf(%p %zd %zd)\n",
                    conn->pa, conn->fd, conn->status, conn->priv,
-                   conn->rbuf.data_ptr,conn->rbuf.data_ridx,conn->rbuf.data_cnt,conn->rbuf.data_gran,
-                   conn->wbuf.data_ptr,conn->wbuf.data_ridx,conn->wbuf.data_cnt,conn->wbuf.data_gran);
+                   P(conn->rbuf.data),conn->rbuf.ridx,C(conn->rbuf.data),
+                   P(conn->wbuf.data),conn->wbuf.ridx,C(conn->wbuf.data));
         }
                
     }
@@ -140,9 +145,6 @@ lh_conn * lh_conn_add(lh_pollarray *pa, int fd, int group, void *priv) {
     conn->status = 0;
     conn->priv = priv;
 
-    conn->wbuf.data_gran = LH_BUF_DEFAULT_GRAN;
-    conn->rbuf.data_gran = LH_BUF_DEFAULT_GRAN;
-
     lh_poll_add(pa, fd, POLLIN, group, conn);
 
     return conn;
@@ -154,8 +156,9 @@ void * lh_conn_remove(lh_conn *conn) {
     if (i<0) return NULL;
 
     // delete everything in the lh_conn structure
-    if (conn->rbuf.data_ptr) free(conn->rbuf.data_ptr);
-    if (conn->wbuf.data_ptr) free(conn->wbuf.data_ptr);
+    
+    lh_arr_free(AR(conn->rbuf.data));
+    lh_arr_free(AR(conn->wbuf.data));
     void * priv = conn->priv;
     free(conn);
 
@@ -172,9 +175,9 @@ void lh_conn_write(lh_conn *conn, uint8_t *data, ssize_t length) {
     assert(!(conn->status&CONN_STATUS_LOCAL_EOF));
 
     // copy data into write buffer, allocating as necessary
-    ssize_t ridx = conn->wbuf.data_cnt;
-    lh_arr_add(AR(conn->wbuf.data),conn->wbuf.data_gran, length);
-    memmove(conn->wbuf.data_ptr+ridx, data, length);
+    ssize_t cnt = C(conn->wbuf.data);
+    lh_arr_add(GAR4(conn->wbuf.data), length);
+    memmove(P(conn->wbuf.data)+cnt, data, length);
     
     // try to send as much as possible
     ssize_t result = lh_write_buf(conn->fd, &conn->wbuf );
@@ -187,7 +190,7 @@ void lh_conn_write(lh_conn *conn, uint8_t *data, ssize_t length) {
 
     // if not all data could be sent, set POLLOUT, so this buffer can
     // be transmitted asynchronously
-    ssize_t remaining = conn->wbuf.data_cnt-conn->wbuf.data_ridx;
+    ssize_t remaining = C(conn->wbuf.data)-conn->wbuf.ridx;
     assert(remaining>=0);
     if (remaining>0)
         lh_poll_w_on(conn->pa, conn->fd);
@@ -227,15 +230,14 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
                 return;
             default: {
                 ssize_t consumed = handler(conn);
-                conn->rbuf.data_ridx += consumed;
-                ssize_t remaining = conn->rbuf.data_cnt - conn->rbuf.data_ridx;
+                conn->rbuf.ridx += consumed;
+                ssize_t remaining = C(conn->rbuf.data) - conn->rbuf.ridx;
                 if (remaining == 0) {
-                    conn->rbuf.data_cnt = conn->rbuf.data_ridx = 0;
+                    C(conn->rbuf.data) = conn->rbuf.ridx = 0;
                 }
                 else if (remaining < COMPACT_THRESHOLD) {
-                    lh_move(conn->rbuf.data_ptr, conn->rbuf.data_ridx, 0, remaining);
-                    conn->rbuf.data_cnt = remaining;
-                    conn->rbuf.data_ridx = 0;
+                    lh_arr_delete_range(GAR4(conn->rbuf.data),0,conn->rbuf.ridx);
+                    conn->rbuf.ridx = 0;
                 }
             }
         }
@@ -251,7 +253,7 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
                 //FIXME: handle errors
                 break;
             default: {
-                ssize_t remaining = conn->wbuf.data_cnt - conn->wbuf.data_ridx;
+                ssize_t remaining = C(conn->wbuf.data) - conn->wbuf.ridx;
                 if (remaining == 0) {
                     lh_poll_w_off(pa, conn->fd);
                     if (conn->status & CONN_STATUS_LOCAL_EOF)

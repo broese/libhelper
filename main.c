@@ -32,9 +32,9 @@
 #include "lh_net.h"
 #include "lh_compress.h"
 #include "lh_dir.h"
+#include "lh_event.h"
 
 #if 0
-#include "lh_event.h"
 #include "lh_image.h"
 #endif
 
@@ -907,21 +907,21 @@ int test_dirwalk() {
 
 
 
-#if 0
+
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
+///// lh_event.h
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-
-ssize_t process_requests2(lh_conn *conn) {
+ssize_t process_requests(lh_conn *conn) {
     int linecount=0;
     int lastpos=-1;
 
     // find the location of the last newline in the buffer
     int i;
-    uint8_t *ptr = conn->rbuf.data_ptr + conn->rbuf.data_ridx;
-    int lim = conn->rbuf.data_cnt - conn->rbuf.data_ridx;
+    uint8_t *ptr = P(conn->rbuf.data) + conn->rbuf.ridx;
+    int lim = C(conn->rbuf.data) - conn->rbuf.ridx;
     for(i=0; i<lim; i++) {
         if (ptr[i] == 0x0a) {
             lastpos = i;
@@ -945,7 +945,7 @@ ssize_t process_requests2(lh_conn *conn) {
 #define GROUP_SERVER 0
 #define GROUP_CLIENTS 1
 
-int test_event2() {
+int test_event() {
     printf("\n\n====== Testing event framework (L3) ======\n");
     int fail = 0, f;
 
@@ -979,12 +979,31 @@ int test_event2() {
             lh_conn_add(&pa, cl, GROUP_CLIENTS, NULL);
         }
 
-        lh_conn_process(&pa, GROUP_CLIENTS, process_requests2);
+        lh_conn_process(&pa, GROUP_CLIENTS, process_requests);
     }
 
     printf("-----\ntotal: %s\n", PASSFAIL(!fail));
     return fail;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#if 0
 
 #define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode))
 #define sz(path) printf("%s : %jd\n", path, lh_filesize_path(path))
@@ -1140,6 +1159,14 @@ int test_module_dir() {
     return fail;
 }
 
+int test_module_event() {
+    int fail=0;
+
+    fail += test_event();
+
+    return fail;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1168,7 +1195,7 @@ int main(int ac, char **av) {
     fail += test_module_net();
     fail += test_module_compress();
     fail += test_module_dir();
-    
+    fail += test_module_event();
 
 
     //// lh_event.h

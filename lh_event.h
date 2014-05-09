@@ -1,7 +1,5 @@
 #pragma once
 
-#include "lh_debug.h"
-#include "lh_buffers.h"
 #include "lh_files.h"
 
 #include <poll.h>

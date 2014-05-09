@@ -25,7 +25,7 @@ typedef struct lh_dwdir {
     //struct stat   * st;
 
     lh_dwfile     * files;      // list of files
-    int             nfiles;     // number of files
+    ssize_t         nfiles;     // number of files
 
     int             init;       // if 0: the structure has not been initialized
                                 // with the list of files, only path is valid
