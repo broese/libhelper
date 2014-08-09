@@ -33,10 +33,9 @@
 #include "lh_compress.h"
 #include "lh_dir.h"
 #include "lh_event.h"
-
-#if 0
 #include "lh_image.h"
-#endif
+
+
 
 typedef struct vertex {
     float x, y, z;
@@ -988,91 +987,41 @@ int test_event() {
 
 
 
+////////////////////////////////////////////////////////////////////////////////
+// lh_image.h
 
 
+int test_png() {
+    printf("\n\n====== Testing image handling ======\n");
+    int fail = 0, f;
+
+    char * path = "./sheep.png";
+    lhimage * img = import_png_file(path);
+    if (!img) { fail ++; goto end; }
+    printf("Loaded image %s, %dx%d (stride=%d)\n",
+           path, img->width, img->height, img->stride);
+
+    resize_image(img,50,50,10,10,0xff000000,-1);
+    printf("Resized to: %dx%d (stride=%d)\n",
+           img->width, img->height, img->stride);
+
+    ssize_t sz = export_png_file(img, "sheep2.png");
+    if (sz<0) { fail++; }
 
 
-
-
-
-
-
-
-
-
-
-
-
-#if 0
-
-#define iss(m) printf("%-8s : %d\n", #m, m(st.st_mode))
-#define sz(path) printf("%s : %jd\n", path, lh_filesize_path(path))
-
-void testhex(const char *hex) {
-
-    uint8_t buf[4096];
-    ssize_t len = hex_import(hex, buf, sizeof(buf));
-    printf("%s\n",hex);
-    hexdump(buf,len);
+ end:
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
 }
 
-int testshit() {
 
-#if 0
-    struct stat st;
-    //CLEAR(st);
 
-    int ss = lh_listen_tcp4_local(23456);
-    int res = fstat(ss, &st);
 
-    if (res < 0) {
-        printf("stat on the server socket failed : %d %s\n", errno, strerror(errno));
-        return;
-    }
-    
-    printf("stat on the server socket succeeded: st_mode = %08x st_ino=%d st_dev=%d\n"
-           "st_size=%jd\n",st.st_mode,st.st_ino,st.st_dev,(intmax_t)st.st_size);
 
-    iss(S_ISREG);
-    iss(S_ISDIR);
-    iss(S_ISCHR);
-    iss(S_ISBLK);
-    iss(S_ISFIFO);
-    iss(S_ISLNK);
-    iss(S_ISSOCK);
 
-    close(ss);
-#endif
 
-#if 0
-    sz("Makefile");
-    sz("/dev/urandom");
-    sz("/dev/sda");
-    sz("/dev/sda1");
-    sz(".");
-    sz("derp");
-    sz("does not exist");    
-#endif
 
-#if 0
-    int fd = open("/dev/sda",O_RDONLY);
-    if (fd<0) LH_ERROR(-1,"Failed to open /dev/sda");
-    off_t pos = lseek(fd, 4096, SEEK_SET);
-    printf("Position after seeking to 4096 : %jd\n",(intmax_t)pos);
-    pos = lseek(fd, 0, SEEK_CUR);
-    printf("Position after tell() : %jd\n",(intmax_t)pos);
-    pos = lseek(fd, 4097, SEEK_SET);
-    printf("Position after seeking to 4097 : %jd\n",(intmax_t)pos);
-#endif
 
-    testhex("0123");
-    testhex("9827893872b3BCDE08ba2387");
-    testhex("9827893872b3BCDE08ba238");
-    testhex("38dcd48484e3(3b734");
-    testhex("");
-}
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1167,6 +1116,14 @@ int test_module_event() {
     return fail;
 }
 
+int test_module_image() {
+    int fail=0;
+
+    fail += test_png();
+
+    return fail;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1195,23 +1152,8 @@ int main(int ac, char **av) {
     fail += test_module_net();
     fail += test_module_compress();
     fail += test_module_dir();
-    fail += test_module_event();
-
-
-    //// lh_event.h
-    //test_event();
-    //test_event2();
-
-    //lh_dirwalk_test(av[1]?av[1]:".");
-
-    //testshit();
-
-    //test_compression();
-    //test_image2();
-    //test_image_resize();
-
-    //printf("%s %s\n",av[1],av[2]);
-    //benchmark_allocation(atoi(av[1]),atoi(av[2]));
+    //fail += test_module_event();
+    fail += test_module_image();
 
     printf("========== TOTAL: %s ==========\n", PASSFAIL(!fail));
 

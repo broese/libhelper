@@ -10,18 +10,24 @@
 #define PNG_DEBUG 3
 #include <png.h>
 
-lhimage * allocate_image(int width, int height) {
-    ALLOC(lhimage,img);
-    img->width = width;
+lhimage * allocate_image(int32_t width, int32_t height, int32_t stride) {
+    if (stride<=0) stride=width;
+
+    lh_create_obj(lhimage,img);
+    img->width  = width;
     img->height = height;
-    ALLOCNE(img->data,width*height);
+    img->stride = stride;
+    
+    lh_alloc_num(img->data,stride*height);
+
     return img;
 }
 
-lhimage * attach_image(int width, int height, uint32_t *data) {
-    ALLOC(lhimage,img);
+lhimage * attach_image(int32_t width, int32_t height, uint32_t *data, int32_t stride) {
+    lh_create_obj(lhimage,img);
     img->width = width;
     img->height = height;
+    img->stride = stride;
     img->data = data;
     return img;
 }
@@ -36,12 +42,15 @@ void destroy_image(lhimage * img) {
 ////////////////////////////////////////////////////////////////////////////////
 
 //FIXME: implement more efficient copying
-void resize_image(lhimage *img, int newwidth, int newheight, int offx, int offy, uint32_t bgcolor) {
+void resize_image(lhimage *img, int32_t newwidth, int32_t newheight,
+                  int32_t offx, int32_t offy, uint32_t bgcolor, int32_t newstride) {
+    if (newstride<=0) newstride=newwidth;
+
     // allocate the new image buffer
-    ALLOCN(uint32_t,newdata,newwidth*newheight);
+    uint32_t size = newstride*newheight;
+    lh_create_num(uint32_t,newdata,size);
 
     // fill it with the background color
-    uint32_t size = newwidth*newheight;
     int i;
     for (i=0; i<size; i++) newdata[i] = bgcolor;
 
@@ -59,8 +68,8 @@ void resize_image(lhimage *img, int newwidth, int newheight, int offx, int offy,
 
     int y;
     for(y=ymin; y<ymax; y++) {
-        uint32_t *from = img->data+y*img->width+xmin;
-        uint32_t *to   = newdata+(y+offy)*newwidth+(xmin+offx);
+        uint32_t *from = img->data+y*img->stride+xmin;
+        uint32_t *to   = newdata+(y+offy)*newstride+(xmin+offx);
         memcpy(to, from, llen);
     }
 
@@ -68,6 +77,7 @@ void resize_image(lhimage *img, int newwidth, int newheight, int offx, int offy,
     img->data = newdata;
     img->width = newwidth;
     img->height = newheight;
+    img->stride = newstride;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +88,7 @@ typedef struct {
     ssize_t offset; // only used for reading
 } pngbuf;
 
-#define PNGGRAN 1024
+#define PNGGRAN 4096
 
 #define PNGTRANS_DEFAULT_EXPORT (PNG_TRANSFORM_INVERT_ALPHA|PNG_TRANSFORM_BGR)
 #define PNGTRANS_RGBA_IMPORT    PNGTRANS_DEFAULT_EXPORT
@@ -87,19 +97,9 @@ typedef struct {
 static void pngio_read(png_structp png, png_bytep data, png_size_t length) {
     pngbuf * buf = (pngbuf *) png_get_io_ptr(png);
 
-#if 0
-    printf("\n--------------------\n"
-           "FR: %08x %d\n"
-           "TO: %08x %d\n",
-           (uint32_t)buf->buffer, buf->offset,
-           (uint32_t)data,length);
-#endif
-
     if (buf->offset + length > buf->size)
         length = buf->size - buf->offset;
     memcpy(data, buf->buffer + buf->offset, length);
-
-    //hexdump(data,length);
 
     buf->offset += length;
 }
@@ -107,7 +107,7 @@ static void pngio_read(png_structp png, png_bytep data, png_size_t length) {
 static void pngio_write(png_structp png, png_bytep data, png_size_t length) {
     pngbuf * buf = (pngbuf *) png_get_io_ptr(png);
     ssize_t offset = buf->size;
-    ARRAY_ADDG(buf->buffer, buf->size, length, PNGGRAN);
+    lh_arr_add(buf->buffer, buf->size, PNGGRAN, length);
     memcpy(buf->buffer + offset, data, length);
 }
 
@@ -131,8 +131,7 @@ unsigned char * export_png(lhimage *img, ssize_t *osize) {
 
 
     // set our custom write function
-    ARRAY_ALLOCG(buffer.buffer, buffer.size, 0, PNGGRAN);
-    buffer.offset = 0;
+    lh_arr_init(buffer.buffer, buffer.size);
 
     if (setjmp(png_jmpbuf(png))) {
         free(buffer.buffer);
@@ -157,10 +156,10 @@ unsigned char * export_png(lhimage *img, ssize_t *osize) {
 
 
     // init row pointers
-    ALLOCN(uint8_t *,rows,img->height);
+    lh_create_num(uint8_t *,rows,img->height);
     int i;
     for (i=0; i<img->height; i++)
-        rows[i] = (uint8_t *)(img->data+i*img->width);
+        rows[i] = (uint8_t *)(img->data+i*img->stride);
     png_set_rows(png, pngi, rows);
 
 
@@ -185,10 +184,10 @@ ssize_t export_png_file(lhimage *img, const char *path) {
     unsigned char * data = export_png(img, &size);
     if (!data) return -1;
 
-    int result = write_file(path, data, size);
+    ssize_t wbytes = lh_save(path, data, size);
     free(data);
 
-    return (result<0)?-1:size;
+    return wbytes;
 }
 
 lhimage * import_png(unsigned char *data, ssize_t length) {
@@ -254,14 +253,14 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
 
 
     // allocate image structure
-    lhimage *img = allocate_image(width, height);
+    lhimage *img = allocate_image(width, height, -1);
 
 
     // init row pointers
-    ALLOCN(uint8_t *,rows,img->height);
+    lh_create_num(uint8_t *,rows,img->height);
     int i;
     for (i=0; i<img->height; i++)
-        rows[i] = (uint8_t *)(img->data+i*img->width);
+        rows[i] = (uint8_t *)(img->data+i*img->stride);
     png_set_rows(png, pngi, rows);
 
     // read image
@@ -281,9 +280,9 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
 }
 
 lhimage * import_png_file(const char *path) {
-    ssize_t size;
-    unsigned char * data = read_file_whole(path, &size);
-    if (!data) return NULL;
+    unsigned char * data;
+    ssize_t size = lh_load_alloc(path, &data);
+    if (size<0) return NULL;
 
     lhimage *img = import_png(data, size);
     free(data);
