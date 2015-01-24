@@ -1,0 +1,6 @@
+*.o
+*~
+test
+*.a
+sheep2.png
+testfile.dat
