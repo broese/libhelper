@@ -640,8 +640,32 @@ int test_wstream() {
     return fail;
 }
 
+// determining resulting varint size from a 32-bit value
+#define TEST_VARINT_SIZE(func, v, s) {                               \
+        int size = lh_varint_size(v);                                \
+        f = (size!=s);                                               \
+        fail += f;                                                   \
+        printf("%s: %08x => %d %s\n", #func, v, s, PASSFAIL(!f));    \
+    }
 
+int test_varint_size() {
+    printf("\n\n====== Testing varint_size ======\n");
+    int fail = 0, f;
 
+    TEST_VARINT_SIZE(varint_size,0,1);
+    TEST_VARINT_SIZE(varint_size,0x7f,1);
+    TEST_VARINT_SIZE(varint_size,0x80,2);
+    TEST_VARINT_SIZE(varint_size,0x3fff,2);
+    TEST_VARINT_SIZE(varint_size,0x4000,3);
+    TEST_VARINT_SIZE(varint_size,0x1fffff,3);
+    TEST_VARINT_SIZE(varint_size,0x200000,4);
+    TEST_VARINT_SIZE(varint_size,0xfffffff,4);
+    TEST_VARINT_SIZE(varint_size,0x10000000,5);
+    TEST_VARINT_SIZE(varint_size,0xffffffff,5);
+
+    printf("-----\ntotal: %s\n", PASSFAIL(!fail));
+    return fail;
+}
 
 
 
@@ -1069,6 +1093,7 @@ int test_module_bytes() {
     fail += test_stream();
     fail += test_wstream();
     //fail += test_unpack();
+    fail += test_varint_size();
 
     return fail;
 }

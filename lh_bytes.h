@@ -394,6 +394,16 @@ static inline int _lh_lwrite_varint(uint8_t **p, uint8_t *l, uint32_t v) {
 #define lh_lwrite_double_le(p,l,v)  _lh_lwrite_double_le(&p,l,v)
 #define lh_lwrite_varint(p,l,v)     _lh_lwrite_varint(&p,l,v)
 
+////////////////////////////////////////////////////////////////////////////////
+
+static inline int lh_varint_size(uint32_t v) {
+    int size = 0;
+    do {
+        v>>=7;
+        size++;
+    } while (v>0);
+    return size;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -482,6 +492,7 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #define parse_float_le          lh_parse_float_le
 #define parse_double            lh_parse_double_be
 #define parse_double_le         lh_parse_double_le
+#define parse_varint            lh_parse_varint
 
 #define lread_char              lh_lread_char
 #define lread_char_le           lh_lread_char
@@ -523,5 +534,7 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #define write_double            lh_write_double_be
 #define write_double_le         lh_write_double_le
 #define write_varint            lh_write_varint
+
+#define varint_size             lh_varint_size
 
 #endif
