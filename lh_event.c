@@ -160,10 +160,12 @@ void * lh_conn_remove(lh_conn *conn) {
     lh_arr_free(AR(conn->rbuf.data));
     lh_arr_free(AR(conn->wbuf.data));
     void * priv = conn->priv;
-    free(conn);
 
     // remove the file descriptor from polling
     lh_poll_remove(pa, conn->fd);
+
+    // free the connection object
+    free(conn);
 
     // return the private data in case user needs it
     return priv;
