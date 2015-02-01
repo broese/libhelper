@@ -18,6 +18,8 @@
 #define lh_move(ptr, from, to, num)                             \
     memmove((ptr)+(to), (ptr)+(from), (num)*sizeof(*(ptr)));
 
+#define lh_free(ptr) { if (ptr) free(ptr); ptr=NULL; }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @name Macros for zeroing memory
 
@@ -109,6 +111,7 @@
 #ifdef LH_DECLARE_SHORT_NAMES
 
 #define ALIGN                           lh_align
+#define FREE                            lh_free
 
 #define CLEAR                           lh_clear_obj
 #define CLEARP                          lh_clear_ptr
