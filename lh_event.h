@@ -31,6 +31,7 @@ int  lh_poll_add(lh_pollarray *pa, int fd, short mode, int group, void *priv);
 void lh_poll_remove(lh_pollarray *pa, int fd);
 int  lh_poll_find(lh_pollarray *pa, int fd);
 short *lh_poll_mode(lh_pollarray *pa, int fd);
+void lh_poll_free(lh_pollarray *pa);
 
 #define lh_poll_r_on(pa,fd)  *(lh_poll_mode(pa,fd)) |= POLLIN
 #define lh_poll_r_off(pa,fd) *(lh_poll_mode(pa,fd)) &= ~POLLIN

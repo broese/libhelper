@@ -133,6 +133,13 @@ void lh_poll_dump(lh_pollarray *pa) {
     }
 }
 
+void lh_poll_free(lh_pollarray *pa) {
+    assert(pa);
+    lh_free(pa->poll);
+    lh_free(pa->data);
+    pa->nfd = 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 lh_conn * lh_conn_add(lh_pollarray *pa, int fd, int group, void *priv) {
