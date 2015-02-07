@@ -494,6 +494,19 @@ static inline ssize_t lh_unpack(uint8_t *ptr, uint8_t *lim, const char *fmt, ...
 #define parse_double_le         lh_parse_double_le
 #define parse_varint            lh_parse_varint
 
+#define read_char               lh_read_char
+#define read_char_le            lh_read_char
+#define read_short              lh_read_short_be
+#define read_short_le           lh_read_short_le
+#define read_int                lh_read_int_be
+#define read_int_le             lh_read_int_le
+#define read_long               lh_read_long_be
+#define read_long_le            lh_read_long_le
+#define read_float              lh_read_float_be
+#define read_float_le           lh_read_float_le
+#define read_double             lh_read_double_be
+#define read_double_le          lh_read_double_le
+
 #define lread_char              lh_lread_char
 #define lread_char_le           lh_lread_char
 #define lread_short             lh_lread_short_be
