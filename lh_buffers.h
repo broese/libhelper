@@ -13,7 +13,7 @@
 
 #define lh_align(n,a) ((__typeof__(n))((((__typeof__(n))(a)-1)|((n)-1))+1))
 
-#define lh_resize(ptr, num) ptr = realloc(ptr, num*sizeof(*ptr));
+#define lh_resize(ptr, num) ptr = realloc(ptr, (num)*sizeof(*ptr));
 
 #define lh_move(ptr, from, to, num)                             \
     memmove((ptr)+(to), (ptr)+(from), (num)*sizeof(*(ptr)));
