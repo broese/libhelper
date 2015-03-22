@@ -543,7 +543,7 @@ int test_stream() {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    char v[] = { 0x00, 0x20, 0x80, 0x01, 0xff, 0x80, 0x01 };
+    uint8_t v[] = { 0x00, 0x20, 0x80, 0x01, 0xff, 0x80, 0x01 };
     uint8_t *vp = v;
 
     vi = lh_read_varint(vp);
@@ -604,7 +604,7 @@ int test_wstream() {
     printf("\n\n====== Testing bytestream writing ======\n");
     int fail = 0, f;
 
-    char buf[512];
+    uint8_t buf[512];
     CLEAR(buf);
     uint8_t *ptr;
 
@@ -910,7 +910,7 @@ int test_dirwalk() {
         char *codes = "*FD-S";
 
         char path[PATH_MAX+1];
-        if (dr.path && dr.path[0])
+        if (dr.path[0])
             sprintf(path, "%s/%s",dr.path,dr.name);
         else
             sprintf(path, "%s", dr.name);
@@ -953,12 +953,12 @@ ssize_t process_requests(lh_conn *conn) {
     }
 
     // write response
-    char buf[4096];
-    int slen = sprintf(buf, "Test Server: received %d lines\n",linecount);
+    uint8_t buf[4096];
+    int slen = sprintf((char *)buf, "Test Server: received %d lines\n",linecount);
     lh_conn_write(conn, buf, slen);
 
     if (conn->status & CONN_STATUS_REMOTE_EOF) {
-        slen = sprintf(buf, "Good Bye\n",linecount);
+        slen = sprintf((char *)buf, "Good Bye\n");
         lh_conn_write(conn, buf, slen);
     }
 
@@ -990,7 +990,7 @@ int test_event() {
         lh_poll(&pa, 1000);
         lh_polldata *pd;
         int pos=0;
-        while ( pd=lh_poll_getnext(&pa, &pos, GROUP_SERVER, POLLIN)) {
+        while ( (pd=lh_poll_getnext(&pa, &pos, GROUP_SERVER, POLLIN)) ) {
             // accept new connection
             struct sockaddr_in cadr;
             int cl = lh_accept_tcp4(pd->fd, &cadr);

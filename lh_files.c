@@ -21,7 +21,7 @@
 
 off_t lh_filesize(int fd) {
     struct stat st;
-    if (fd<0) LH_ERROR(-1,"Incorrect file descriptor","");
+    if (fd<0) LH_ERROR(-1,"Incorrect file descriptor");
     if (fstat(fd, &st)) LH_ERROR(-1,"Failed to stat file descriptor %d",fd);
 
     if (S_ISREG(st.st_mode)) return st.st_size;

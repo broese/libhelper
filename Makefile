@@ -1,4 +1,4 @@
-CC=gcc -std=gnu99
+CC=clang -std=gnu99
 CFLAGS=-g -pg
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=0
 CONFIG=-include config.h

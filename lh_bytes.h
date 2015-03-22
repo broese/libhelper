@@ -195,18 +195,18 @@ static inline uint32_t _lh_read_varint(uint8_t **p) {
 #define lh_read_double_le(p)    _lh_read_double_le(&p)
 #define lh_read_varint(p)       _lh_read_varint(&p)
 
-static inline uint8_t  lh_parse_char(uint8_t *p)      { _lh_read_char(&p); }
-static inline uint16_t lh_parse_short_be(uint8_t *p)  { _lh_read_short_be(&p); }
-static inline uint16_t lh_parse_short_le(uint8_t *p)  { _lh_read_short_le(&p); }
-static inline uint32_t lh_parse_int_be(uint8_t *p)    { _lh_read_int_be(&p); }
-static inline uint32_t lh_parse_int_le(uint8_t *p)    { _lh_read_int_le(&p); }
-static inline uint64_t lh_parse_long_be(uint8_t *p)   { _lh_read_long_be(&p); }
-static inline uint64_t lh_parse_long_le(uint8_t *p)   { _lh_read_long_le(&p); }
-static inline float    lh_parse_float_be(uint8_t *p)  { _lh_read_float_be(&p); }
-static inline float    lh_parse_float_le(uint8_t *p)  { _lh_read_float_le(&p); }
-static inline double   lh_parse_double_be(uint8_t *p) { _lh_read_double_be(&p); }
-static inline double   lh_parse_double_le(uint8_t *p) { _lh_read_double_le(&p); }
-static inline uint32_t lh_parse_varint(uint8_t *p)    { _lh_read_varint(&p); }
+static inline uint8_t  lh_parse_char(uint8_t *p)      { return _lh_read_char(&p); }
+static inline uint16_t lh_parse_short_be(uint8_t *p)  { return _lh_read_short_be(&p); }
+static inline uint16_t lh_parse_short_le(uint8_t *p)  { return _lh_read_short_le(&p); }
+static inline uint32_t lh_parse_int_be(uint8_t *p)    { return _lh_read_int_be(&p); }
+static inline uint32_t lh_parse_int_le(uint8_t *p)    { return _lh_read_int_le(&p); }
+static inline uint64_t lh_parse_long_be(uint8_t *p)   { return _lh_read_long_be(&p); }
+static inline uint64_t lh_parse_long_le(uint8_t *p)   { return _lh_read_long_le(&p); }
+static inline float    lh_parse_float_be(uint8_t *p)  { return _lh_read_float_be(&p); }
+static inline float    lh_parse_float_le(uint8_t *p)  { return _lh_read_float_le(&p); }
+static inline double   lh_parse_double_be(uint8_t *p) { return _lh_read_double_be(&p); }
+static inline double   lh_parse_double_le(uint8_t *p) { return _lh_read_double_le(&p); }
+static inline uint32_t lh_parse_varint(uint8_t *p)    { return _lh_read_varint(&p); }
 
 //TODO: zstring, lstring
 
@@ -264,7 +264,7 @@ static inline int _lh_lread_varint(uint8_t **p, uint8_t *l, uint32_t *v) {
 #define PUTLE *p++=(uint8_t)v; v>>=8;
 
 static inline uint8_t * lh_place_char(uint8_t *p, uint8_t v) {
-    PUTLE;
+    *p++=(uint8_t)v;
     return p;
 }
 

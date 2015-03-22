@@ -32,7 +32,7 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
     va_list args;
 
     va_start(args,fmt);
-    int plen = vsnprintf(pos, remsize, fmt, args);
+    int plen = vsnprintf((char *)pos, remsize, fmt, args);
     va_end(args);
 
     if (plen < 0) return plen; // error occured
@@ -44,7 +44,7 @@ static inline ssize_t lh_bufprintf_g(uint8_t **bufp, ssize_t *lenp, int gran, co
         pos = *bufp+*lenp;
 
         va_start(args,fmt);
-        plen = vsnprintf(pos, plen+1, fmt, args);
+        plen = vsnprintf((char *)pos, plen+1, fmt, args);
         va_end(args);
 
         if (plen < 0) return plen; // error occured

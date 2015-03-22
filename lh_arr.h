@@ -70,8 +70,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define lh_arr_declare(type,name)   type * P(name); size_t C(name);
-#define lh_arr_declare_i(type,name) type * P(name)=NULL; size_t C(name)=0;
+#define lh_arr_declare(type,name)   type * P(name); ssize_t C(name);
+#define lh_arr_declare_i(type,name) type * P(name)=NULL; ssize_t C(name)=0;
 
 #define lh_buf_declare(name)        lh_arr_declare(uint8_t,name)
 #define lh_buf_declare_i(name)      lh_arr_declare_i(uint8_t,name)

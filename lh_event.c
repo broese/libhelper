@@ -220,7 +220,7 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
     int pos=0;
     lh_polldata *pd;
 
-    while (pd=lh_poll_getnext(pa, &pos, group, POLLIN)) {
+    while ((pd=lh_poll_getnext(pa, &pos, group, POLLIN))) {
         lh_conn *conn = (lh_conn *)pd->priv;
         ssize_t rbytes = lh_read_buf(conn->fd, &conn->rbuf);
        
@@ -252,7 +252,7 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
         }
     }
 
-    while (pd=lh_poll_getnext(pa, &pos, group, POLLOUT)) {
+    while ((pd=lh_poll_getnext(pa, &pos, group, POLLOUT))) {
         lh_conn *conn = (lh_conn *)pd->priv;
         ssize_t wbytes = lh_write_buf(conn->fd, &conn->wbuf);
         switch (wbytes) {
