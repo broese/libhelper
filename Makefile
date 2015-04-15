@@ -1,5 +1,4 @@
-CC=clang -std=gnu99
-CFLAGS=-g -pg
+CFLAGS=-g -pg -std=gnu99
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=0
 CONFIG=-include config.h
 AR=ar
@@ -14,6 +13,7 @@ ifeq ($(UNAME),SunOS)
 endif
 ifeq ($(UNAME),Linux)
 	LIBS += -lcrypto -lz
+	CC=clang
 endif
 
 LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_compress.o lh_dir.o lh_event.o lh_image.o
