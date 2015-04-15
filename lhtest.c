@@ -49,6 +49,7 @@ typedef struct model {
 
 #define PASSFAIL(cond) ( (cond) ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m" )
 
+char testdir[PATH_MAX];
 
 
 
@@ -678,9 +679,12 @@ int test_varint_size() {
 uint8_t pr_init[16] = { 0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,
                         0x01,0x23,0x45,0x67,0x89,0xAB,0xCD,0xEF,};
 #define PRSIZE 1048576
-#define PRNAME "testfile.dat"
+#define PRNAME_NAME "testfile.dat"
+char PRNAME[PATH_MAX];
 
 int create_test_file() {
+    sprintf(PRNAME, "%s/%s", testdir, PRNAME_NAME);
+
     lh_create_buf(seq,PRSIZE);
     int i;
 
@@ -827,7 +831,7 @@ int test_gzip() {
     fail += create_test_file();
 
     uint8_t * data;
-    ssize_t len = lh_load_alloc("testfile.dat", &data);
+    ssize_t len = lh_load_alloc(PRNAME, &data);
     if (len!=1048576) { fail++; goto fail; }
 
     ssize_t clen;
@@ -854,7 +858,7 @@ int test_zlib() {
     fail += create_test_file();
 
     uint8_t * data;
-    ssize_t len = lh_load_alloc("testfile.dat", &data);
+    ssize_t len = lh_load_alloc(PRNAME, &data);
     if (len!=1048576) { fail++; goto fail; }
 
     ssize_t clen;
@@ -1012,7 +1016,10 @@ int test_png() {
     printf("\n\n====== Testing image handling ======\n");
     int fail = 0, f;
 
-    char * path = "./sheep.png";
+    char path[PATH_MAX], opath[PATH_MAX];
+    sprintf(path, "%s/%s", testdir, "sheep.png");
+    sprintf(opath, "%s/%s", testdir, "sheep_out.png");
+
     lhimage * img = import_png_file(path);
     if (!img) { fail ++; goto end; }
     printf("Loaded image %s, %dx%d (stride=%d)\n",
@@ -1022,7 +1029,7 @@ int test_png() {
     printf("Resized to: %dx%d (stride=%d)\n",
            img->width, img->height, img->stride);
 
-    ssize_t sz = export_png_file(img, "sheep2.png");
+    ssize_t sz = export_png_file(img, opath);
     if (sz<0) { fail++; }
 
 
@@ -1145,13 +1152,9 @@ int test_module_image() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-//void lh_dirwalk_test(const char * basedir);
-
 
 int main(int ac, char **av) {
-    uint16_t c = 0xffed;
-    c++;
-    printf("%04x\n",(uint16_t)((0xfff|c)+1)   );
+    strcpy(testdir, av[1] ? av[1] : ".");
 
     int fail = 0;
 

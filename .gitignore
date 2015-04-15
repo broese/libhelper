@@ -1,6 +1,6 @@
 *.o
 *~
-test
+lhtest
 *.a
-sheep2.png
+sheep_out.png
 testfile.dat

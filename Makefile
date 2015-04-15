@@ -18,13 +18,16 @@ endif
 
 LIBOBJ=lh_debug.o lh_files.o lh_net.o lh_compress.o lh_dir.o lh_event.o lh_image.o
 
-all: test libhelper.a
+all: libhelper.a
 
 libhelper.a: $(LIBOBJ)
 	$(AR) rcs $@ $^
 
-test: main.o $(LIBOBJ)
+lhtest: lhtest.o libhelper.a
 	$(CC) -o $@ $^ $(LIBS)
+
+test: lhtest
+	./lhtest testdata
 
 .c.o:
 	$(CC) $(CFLAGS) $(DEFS) $(INC) $(CONFIG) -o $@ -c $<
@@ -32,7 +35,7 @@ test: main.o $(LIBOBJ)
 main.o: lh_buffers.h lh_arr.h lh_marr.h lh_strings.h lh_files.h lh_debug.h lh_compress.h lh_image.h lh_event.h lh_dir.h config.h
 
 clean:
-	rm -f *.o *~ *.a test test2
+	rm -f *.o *~ *.a lhtest
 
 doc:
 	doxygen
