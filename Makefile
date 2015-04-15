@@ -1,5 +1,5 @@
 CFLAGS=-g -pg -std=gnu99
-DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DDEBUG_MEMORY=0
+DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 CONFIG=-include config.h
 AR=ar
 
@@ -32,14 +32,9 @@ test: main.o $(LIBOBJ)
 main.o: lh_buffers.h lh_arr.h lh_marr.h lh_strings.h lh_files.h lh_debug.h lh_compress.h lh_image.h lh_event.h lh_dir.h config.h
 
 clean:
-	rm -f *.o *~ *.a test test2 mtrace
+	rm -f *.o *~ *.a test test2
 
 doc:
 	doxygen
 
 FORCE:
-
-mtrace: FORCE
-	MALLOC_TRACE=mtrace ./test
-	mtrace mtrace | perl -e 'while (<>) { if (/^(0x\S+)\s+(0x\S+)\s+at\s+(0x\S+)/) { print "$$1 $$2 at ".`addr2line -e test $$3`; } }'
-

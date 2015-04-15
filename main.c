@@ -13,13 +13,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-
-#ifdef HAVE_MTRACE
-#if DEBUG_MEMORY
-#include <mcheck.h>
-#endif
-#endif
-
 #define LH_DECLARE_SHORT_NAMES 1
 
 #include "lh_buffers.h"
@@ -1156,12 +1149,6 @@ int test_module_image() {
 
 
 int main(int ac, char **av) {
-#ifdef HAVE_MTRACE
-#if DEBUG_MEMORY
-    mtrace();
-#endif
-#endif
-
     uint16_t c = 0xffed;
     c++;
     printf("%04x\n",(uint16_t)((0xfff|c)+1)   );
@@ -1182,11 +1169,6 @@ int main(int ac, char **av) {
 
     printf("========== TOTAL: %s ==========\n", PASSFAIL(!fail));
 
-#ifdef HAVE_MTRACE
-#if DEBUG_MEMORY
-    muntrace();
-#endif
-#endif
     return 0;
 }
 
