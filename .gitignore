@@ -4,3 +4,4 @@ lhtest
 *.a
 sheep_out.png
 testfile.dat
+make.depend*
