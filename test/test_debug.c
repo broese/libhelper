@@ -8,6 +8,9 @@ TF(error, "errors") {
 } _TF
 
 TF(here, "LH_HERE tracing") {
+    LH_HERE;
+    printf("in between\n");
+    LH_HERE;
 } _TF
 
 TF(hex, "hex output") {
