@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -28,6 +27,7 @@
 #include <lh_event.h>
 #include <lh_image.h>
 
+#include "lhtest.h"
 
 
 typedef struct vertex {
@@ -46,8 +46,6 @@ typedef struct model {
     face   * f;
     int      nf;
 } model;
-
-#define PASSFAIL(cond) ( (cond) ? "\x1b[32mPASS\x1b[0m" : "\x1b[31mFAIL\x1b[0m" )
 
 char testdir[PATH_MAX];
 
@@ -1152,12 +1150,16 @@ int test_module_image() {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+int test_module_debug();
 
 int main(int ac, char **av) {
     strcpy(testdir, av[1] ? av[1] : ".");
 
     int fail = 0;
 
+    fail += test_module_debug();
+
+#if 0
     fail += test_module_buffers();
     fail += test_module_arr();
     fail += test_module_marr();
@@ -1169,6 +1171,7 @@ int main(int ac, char **av) {
     fail += test_module_dir();
     //fail += test_module_event();
     fail += test_module_image();
+#endif
 
     printf("========== TOTAL: %s ==========\n", PASSFAIL(!fail));
 

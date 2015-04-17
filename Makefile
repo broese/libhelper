@@ -10,10 +10,10 @@ LIBHDRN=config lh_arr lh_buffers lh_bytes lh_compress lh_debug lh_dir lh_event l
 LIBHDR=$(addsuffix .h, $(LIBHDRN))
 LIBOBJ=$(LIBSRC:.c=.o)
 
-TSTSRCN=lhtest
+TSTSRCN=lhtest test_debug
 TSTSRC=$(addprefix test/, $(addsuffix .c, $(TSTSRCN)))
-TSTHDRN=
-TSTHDR=$(addprefix test/, $(addsuffix .c, $(TSTHDRN)))
+TSTHDRN=lhtest
+TSTHDR=$(addprefix test/, $(addsuffix .h, $(TSTHDRN)))
 TSTOBJ=$(TSTSRC:.c=.o)
 TSTBIN=lhtest
 TSTDIR=test
