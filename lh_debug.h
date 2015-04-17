@@ -123,6 +123,6 @@ extern int LH_DEBUG_LEVEL_NAME;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void hexdump(const unsigned char * data, ssize_t length);
-void hexprint(const unsigned char * data, ssize_t length);
+void hexdump(const void * data, ssize_t length);
+void hexprint(const void * data, ssize_t length);
 ssize_t hex_import(const char *hex, uint8_t *bin, ssize_t maxlen);

@@ -24,6 +24,7 @@ static int debug_function(int level) {
     LH_WARN("warning");
     LH_ATTN("attention");
     LH_ALERT("alert");
+    return 0;
 }
 
 TF(warn, "warnings") {
