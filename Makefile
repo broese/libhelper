@@ -1,31 +1,34 @@
 CFLAGS=-g -pg -std=gnu99
 DEFS=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 CONFIG=-include config.h
-INC=
+INC=-I.
 LIBS=-lpng
 
-LIBSRC=lh_debug.c lh_files.c lh_net.c lh_compress.c lh_dir.c lh_event.c lh_image.c
-LIBHDR=config.h lh_arr.h lh_buffers.h lh_bytes.h lh_compress.h lh_debug.h lh_dir.h lh_event.h lh_files.h lh_image.h lh_marr.h lh_net.h lh_strings.h
+LIBSRCN=lh_debug lh_files lh_net lh_compress lh_dir lh_event lh_image
+LIBSRC=$(addsuffix .c, $(LIBSRCN))
+LIBHDRN=config lh_arr lh_buffers lh_bytes lh_compress lh_debug lh_dir lh_event lh_files lh_image lh_marr lh_net lh_strings
+LIBHDR=$(addsuffix .h, $(LIBHDRN))
 LIBOBJ=$(LIBSRC:.c=.o)
 
-TSTSRC=lhtest.c
-TSTHDR=
+TSTSRCN=lhtest
+TSTSRC=$(addprefix test/, $(addsuffix .c, $(TSTSRCN)))
+TSTHDRN=
+TSTHDR=$(addprefix test/, $(addsuffix .c, $(TSTHDRN)))
 TSTOBJ=$(TSTSRC:.c=.o)
 TSTBIN=lhtest
-TSTDIR=testdata
+TSTDIR=test
 
 DEPFILE=make.depend
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),SunOS)
-        INC  += -I/users/atm/broese/include
+	INC  += -I/users/atm/broese/include
 	LIBS += -lsocket -lnsl -lmd5 -L/users/atm/broese/lib -lz
 endif
 ifeq ($(UNAME),Linux)
 	LIBS += -lcrypto -lz
 	CC=clang
 endif
-
 
 
 
@@ -52,7 +55,7 @@ doc:
 	doxygen
 
 clean:
-	rm -f *.o *~ *.a $(TSTBIN)
+	rm -f *.o test/*.o *~ *.a $(TSTBIN)
 
 FORCE:
 
