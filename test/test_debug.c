@@ -12,7 +12,25 @@
 
 #include "lhtest.h"
 
+//#define LH_ERROR_BEHAVIOR LH_ERROR_EXIT
+#define LH_DEBUG_LEVEL_NAME my_debug_level
+#include <lh_debug.h>
+
+int my_debug_level = 1;
+
+static int debug_function(int level) {
+    my_debug_level = level;
+    LH_INFO("information");
+    LH_WARN("warning");
+    LH_ATTN("attention");
+    LH_ALERT("alert");
+}
+
 TF(warn, "warnings") {
+    debug_function(LH_DEBUG_LEVEL_INFO); printf("---\n");
+    debug_function(LH_DEBUG_LEVEL_WARN); printf("---\n");
+    debug_function(LH_DEBUG_LEVEL_ATTN); printf("---\n");
+    debug_function(LH_DEBUG_LEVEL_ALERT); printf("---\n");
 } _TF
 
 static int error_function(int val) {

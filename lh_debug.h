@@ -94,12 +94,28 @@ behavior, set the appropriate value before including the module, for example:
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef LH_DEBUG_LEVEL_NAME
+#define LH_DEBUG_LEVEL_NAME lh_debug_level
 #endif
 
+extern int LH_DEBUG_LEVEL_NAME;
 
-#define LH_DEBUG(msg,...)                               \
-    fprintf(stderr, "%s:%d (%s) : " msg "\n",           \
-            __FILE__,__LINE__,__func__,##__VA_ARGS__);
+#define LH_DEBUG_LEVEL_INFO  0
+#define LH_DEBUG_LEVEL_WARN  1
+#define LH_DEBUG_LEVEL_ATTN  2
+#define LH_DEBUG_LEVEL_ALERT 3
+
+#define LH_DEBUG(level,msg,...)                             \
+    if (level >= LH_DEBUG_LEVEL_NAME)                       \
+        fprintf(stderr, "%s:%d (%s) : " msg "\n",           \
+                __FILE__,__LINE__,__func__,##__VA_ARGS__);
+
+#define LH_INFO(msg)  LH_DEBUG(LH_DEBUG_LEVEL_INFO,msg)
+#define LH_WARN(msg)  LH_DEBUG(LH_DEBUG_LEVEL_WARN,msg)
+#define LH_ATTN(msg)  LH_DEBUG(LH_DEBUG_LEVEL_ATTN,msg)
+#define LH_ALERT(msg) LH_DEBUG(LH_DEBUG_LEVEL_ALERT,msg)
+
+////////////////////////////////////////////////////////////////////////////////
 
 #define LH_HERE                                                     \
     fprintf(stderr, "%s:%d (%s)\n", __FILE__,__LINE__,__func__);    \
