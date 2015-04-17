@@ -11,6 +11,9 @@ TF(here, "LH_HERE tracing") {
 } _TF
 
 TF(hex, "hex output") {
+    const char *test = "This is an example string\n";
+    hexdump(test, strlen(test));
+    hexprint(test, strlen(test));
 } _TF
 
 ////////////////////////////////////////////////////////////////////////////////
