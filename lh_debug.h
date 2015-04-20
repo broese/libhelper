@@ -117,9 +117,10 @@ extern int LH_DEBUG_LEVEL_NAME;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LH_HERE                                                     \
-    fprintf(stderr, "%s:%d (%s)\n", __FILE__,__LINE__,__func__);    \
-    fflush(stderr);
+#define LH_HERE {                                                       \
+        fprintf(stderr, "%s:%d (%s)\n", __FILE__,__LINE__,__func__);    \
+        fflush(stderr);                                                 \
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 
