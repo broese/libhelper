@@ -20,10 +20,10 @@ int my_debug_level = 1;
 
 static int debug_function(int level) {
     my_debug_level = level;
-    LH_INFO("information");
-    LH_WARN("warning");
-    LH_ATTN("attention");
-    LH_ALERT("alert");
+    LH_INFO("information %d", level);
+    LH_WARN("warning %d", level);
+    LH_ATTN("attention %d", level);
+    LH_ALERT("alert %d", level);
     return 0;
 }
 
