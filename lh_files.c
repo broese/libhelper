@@ -87,7 +87,7 @@ int lh_open_read(const char *path, off_t *sizep) {
 }
 
 int lh_open_write(const char *path) {
-    return lh_open_file(path,NULL,O_WRONLY|O_CREAT,"writing");
+    return lh_open_file(path,NULL,O_WRONLY|O_CREAT|O_TRUNC,"writing");
 }
 
 int lh_open_update(const char *path, off_t *sizep) {
