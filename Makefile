@@ -22,12 +22,11 @@ DEPFILE=make.depend
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),SunOS)
-	INC  += -I/users/atm/broese/include
-	LIBS += -lsocket -lnsl -lmd5 -L/users/atm/broese/lib -lz
+	INC  += -I~/include
+	LIBS += -lsocket -lnsl -lmd5 -L~/lib -lz
 endif
 ifeq ($(UNAME),Linux)
 	LIBS += -lcrypto -lz
-	CC=clang
 endif
 
 
