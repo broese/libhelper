@@ -22,3 +22,11 @@
 #define HAVE_TELL
 
 #endif
+
+
+#ifdef __CYGWIN__
+
+#include <sys/types.h>
+#define HAVE_OPENSSL 1
+
+#endif

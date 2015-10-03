@@ -28,6 +28,10 @@ endif
 ifeq ($(UNAME),Linux)
 	LIBS += -lcrypto -lz
 endif
+ifeq ($(shell uname -o),Cygwin)
+	LIBS += -lcrypto -lz
+	CFLAGS=-std=gnu99
+endif
 
 
 
