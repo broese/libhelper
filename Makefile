@@ -20,17 +20,18 @@ TSTDIR=test
 
 DEPFILE=make.depend
 
-UNAME := $(shell uname -s)
-ifeq ($(UNAME),SunOS)
-	INC  += -I~/include
-	LIBS += -lsocket -lnsl -lmd5 -L~/lib -lz
-endif
-ifeq ($(UNAME),Linux)
+ifeq ($(shell uname -s),SunOS)
+	INC  += -I$(HOME)/include
+	LIBS += -lsocket -lnsl -lmd5 -L$(HOME)/lib -lz
+	CC   = gcc
+else
+ifeq ($(shell uname -s),Linux)
 	LIBS += -lcrypto -lz
 endif
 ifeq ($(shell uname -o),Cygwin)
 	LIBS += -lcrypto -lz
 	CFLAGS=-std=gnu99
+endif
 endif
 
 
