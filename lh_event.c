@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #include "lh_event.h"
 #include "lh_debug.h"
 #include "lh_buffers.h"
@@ -24,7 +34,7 @@ int lh_poll_add(lh_pollarray *pa, int fd, short mode, int group, void *priv) {
     pd->state = 0;
     pd->priv  = priv;
 
-    return pa->nfd-1;    
+    return pa->nfd-1;
 }
 
 int lh_poll_find(lh_pollarray *pa, int fd) {
@@ -71,7 +81,7 @@ lh_polldata * lh_poll_getnext(lh_pollarray *pa, int *pos, int group, short mode)
         if (pd->group == group && (pd->state&mode)) {
             (*pos)++;
             return pd;
-        }            
+        }
     }
     return NULL;
 }
@@ -129,7 +139,7 @@ void lh_poll_dump(lh_pollarray *pa) {
                    P(conn->rbuf.data),conn->rbuf.ridx,C(conn->rbuf.data),
                    P(conn->wbuf.data),conn->wbuf.ridx,C(conn->wbuf.data));
         }
-               
+
     }
 }
 
@@ -163,7 +173,7 @@ void * lh_conn_remove(lh_conn *conn) {
     if (i<0) return NULL;
 
     // delete everything in the lh_conn structure
-    
+
     lh_arr_free(AR(conn->rbuf.data));
     lh_arr_free(AR(conn->wbuf.data));
     void * priv = conn->priv;
@@ -187,7 +197,7 @@ void lh_conn_write(lh_conn *conn, uint8_t *data, ssize_t length) {
     ssize_t cnt = C(conn->wbuf.data);
     lh_arr_add(GAR4(conn->wbuf.data), length);
     memmove(P(conn->wbuf.data)+cnt, data, length);
-    
+
     // try to send as much as possible
     ssize_t result = lh_write_buf(conn->fd, &conn->wbuf );
 
@@ -223,7 +233,7 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
     while ((pd=lh_poll_getnext(pa, &pos, group, POLLIN))) {
         lh_conn *conn = (lh_conn *)pd->priv;
         ssize_t rbytes = lh_read_buf(conn->fd, &conn->rbuf);
-       
+
         switch (rbytes) {
             case LH_FILE_INVALID:
             case LH_FILE_ERROR:
@@ -270,5 +280,5 @@ void lh_conn_process(lh_pollarray *pa, int group, lh_conn_handler handler) {
                 }
             }
         }
-    }        
+    }
 }

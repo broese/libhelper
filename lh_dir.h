@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #pragma once
 
 #include <limits.h>
@@ -12,7 +22,7 @@
 #include "lh_arr.h"
 #include "lh_debug.h"
 
-/* Note: FTS-based implementation was dropped due to lack of 
+/* Note: FTS-based implementation was dropped due to lack of
  * large file (_FILE_OFFSET_BITS=64) support.
  * FTW-based implementation is considered, but it would have
  * major limitations - no sorting, no dirend, etc.

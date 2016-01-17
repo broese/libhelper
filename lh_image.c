@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #include "lh_image.h"
 #include "lh_buffers.h"
 #include "lh_files.h"
@@ -17,7 +27,7 @@ lhimage * allocate_image(int32_t width, int32_t height, int32_t stride) {
     img->width  = width;
     img->height = height;
     img->stride = stride;
-    
+
     lh_alloc_num(img->data,stride*height);
 
     return img;
@@ -92,7 +102,7 @@ typedef struct {
 
 #define PNGTRANS_DEFAULT_EXPORT (PNG_TRANSFORM_INVERT_ALPHA|PNG_TRANSFORM_BGR)
 #define PNGTRANS_RGBA_IMPORT    PNGTRANS_DEFAULT_EXPORT
-#define PNGTRANS_RGB_IMPORT     
+#define PNGTRANS_RGB_IMPORT
 
 static void pngio_read(png_structp png, png_bytep data, png_size_t length) {
     pngbuf * buf = (pngbuf *) png_get_io_ptr(png);
@@ -138,7 +148,7 @@ unsigned char * export_png(lhimage *img, ssize_t *osize) {
         png_destroy_write_struct(&png, &pngi);
         LH_ERROR(NULL,"png_set_write_fn failed");
     }
-    
+
     png_set_write_fn(png, &buffer, pngio_write, NULL);
 
 
@@ -222,7 +232,7 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
         png_destroy_read_struct(&png, &pngi, &pnge);
         LH_ERROR(NULL,"png_set_read_fn failed");
     }
-    
+
     buffer.offset = 8;
     png_set_sig_bytes(png, 8);
 

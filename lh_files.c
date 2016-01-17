@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #include "lh_files.h"
 #include "lh_buffers.h"
 #include "lh_debug.h"
@@ -68,7 +78,7 @@ static int lh_open_file(const char *path, off_t *sizep, int flags, const char *s
 #ifdef O_LARGEFILE
     flags |= O_LARGEFILE;
 #endif
-   
+
     int fd;
     if (flags & O_CREAT)
         fd = open(path, flags, LH_FILE_CREAT_MODE);
@@ -108,13 +118,13 @@ ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ..
     if (offset >= 0) {
         // note that the file might be unseekable, such as a pipe or socket,
         // which will throw an error
-        if (lseek(fd, offset, SEEK_SET)<0)                                    
+        if (lseek(fd, offset, SEEK_SET)<0)
             LH_ERROR(LH_FILE_ERROR, "Failed to seek to offset %jd", (intmax_t) offset);
     }
 
     // attempt to read
     ssize_t rbytes = read(fd, buf, length);
-    
+
     if (rbytes == 0)
         return LH_FILE_EOF;
 
@@ -130,7 +140,7 @@ ssize_t lh_read_static_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ..
 
 ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) {
     if (!bo || fd<0) return LH_FILE_INVALID;
-    
+
     // if no length was supplied, attempt to determine how much will be read
     ssize_t rsize = length;
     if (length < 0) {
@@ -141,7 +151,7 @@ ssize_t lh_read_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) 
         //       continue, and if the read fails, it fails.
         if (fsize < 0) {
             // the file size cannot be determined, we will assume the default
-            // LH_READ_SIZELESS_FACTOR * granularity, 
+            // LH_READ_SIZELESS_FACTOR * granularity,
             rsize = LH_READ_SIZELESS_FACTOR * LH_BUF_DEFAULT_GRAN;
 
             // trim it to the next granularity boundary, so we get a clean total size
@@ -200,13 +210,13 @@ ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...) {
     if (offset >= 0) {
         // note that the file might be unseekable, such as a pipe or socket,
         // which will throw an error
-        if (lseek(fd, offset, SEEK_SET)<0)                                    
+        if (lseek(fd, offset, SEEK_SET)<0)
             LH_ERROR(LH_FILE_ERROR, "Failed to seek to offset %jd", (intmax_t) offset);
     }
 
     // attempt to write
     ssize_t wbytes = write(fd, buf, length);
-    
+
     if (wbytes < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return LH_FILE_WAIT;
@@ -219,7 +229,7 @@ ssize_t lh_write_at(int fd, uint8_t *buf, ssize_t length, off_t offset, ...) {
 
 ssize_t lh_write_buf_at(int fd, lh_buf_t *bo, ssize_t length, off_t offset, ...) {
     if (!bo || fd<0) return LH_FILE_INVALID;
-    
+
     ssize_t wsize = (length<0) ? (C(bo->data)-bo->ridx) : length;
     ssize_t wbytes = lh_write_at(fd, P(bo->data)+bo->ridx, wsize, offset);
 

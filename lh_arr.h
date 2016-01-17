@@ -1,5 +1,17 @@
 #pragma once
 
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+
+ lh_arr : resizable arrays
+*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /**
  * \file Resizable Arrays
@@ -34,7 +46,7 @@
  * granularity, you risk memory corruption as the fucntions will make a
  * wrong assumption about the allocated size. \c setgran macros can be used
  * to ensuire specific granularity on an array.
- * 
+ *
  * The operations on the array (allocate, resize, add, etc) come in two kinds -
  * the standard named macro does not clear the newly allocated elements, and
  * the macros with the _c suffix do.
@@ -101,7 +113,7 @@ static inline void * lh_arr_insert_range_(
     // allocate more memory if needed
     if (lh_align(newcnt,gran) > lh_align(*cnt,gran))
         *ptr = realloc(*ptr, lh_align(newcnt,gran)*size);
-    
+
     // move data to provide space for the new elements
     ssize_t idxpos = idx*size;
     ssize_t newpos = (idx+num)*size;
@@ -134,7 +146,7 @@ static inline void * lh_arr_delete_range_(
     ssize_t idxpos = idx*size;
     ssize_t newpos = (idx+num)*size;
     ssize_t mvsize = (*cnt-idx-num)*size;
-                                         
+
     if (mvsize > 0)
         memmove(*ptr+idxpos, *ptr+newpos, mvsize);
 

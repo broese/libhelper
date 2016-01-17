@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #pragma once
 
 #include <stdlib.h>
@@ -82,7 +92,7 @@ static inline void lh_multiarray_resize_internal(int *cnt, int num, int gran, ..
         ssize_t so  = va_arg(fields, ssize_t);
         if ( lh_align(num,gran) > lh_align(*cnt,gran) ) {
             *ptrp = realloc(*ptrp, so*lh_align(num,gran));
-            memset(((uint8_t*)*ptrp)+*cnt*so, 0, 
+            memset(((uint8_t*)*ptrp)+*cnt*so, 0,
                    so*(lh_align(num,gran)-lh_align(*cnt,gran)));
         }
     } while (1);

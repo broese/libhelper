@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 /* This is a dump for all the pieces from lh_buffers that we remove for now */
 
 /*
@@ -14,7 +24,7 @@ preprocessor own limit. This also does not work for the empty list - returns 1
 
 /*
 The concept is similar to an expandable array, but there are multiple
-arrays of the same length. So, we have multiple pointers to data, with 
+arrays of the same length. So, we have multiple pointers to data, with
 potentially different sizeof-s of their elements, but with a commont
 integer counter for the number of elements and same granularity.
 The special macro is capable of simultaneously resizing a semi-arbitrary

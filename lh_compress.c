@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #define LH_DECLARE_SHORT_NAMES 1
 
 #include "lh_debug.h"
@@ -27,10 +37,10 @@
 
 #define AM_DYNAMIC  1
 // realloc buffers if needed
-// olen contains maximum allowed buffer size 
+// olen contains maximum allowed buffer size
 
 // op         : OP_ENCODE for compression, OP_DECODE for decompression
-// format     : FORMAT_ZLIB for zlib, FORMAT_GZIP for gzip or 
+// format     : FORMAT_ZLIB for zlib, FORMAT_GZIP for gzip or
 //              FORMAT_AUTO for auto-detect (decompression only)
 // complevel  : leave at Z_DEFAULT_COMPRESSION
 // alloc_mode : AM_STATIC - static buffer, AM_DYNAMIC - automatically resize buffer as needed
@@ -41,7 +51,7 @@
 static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode,
                              const uint8_t *ibuf, ssize_t ilen, uint8_t **obuf, ssize_t *olen,
                              ptrdiff_t offset) {
-    
+
     // set up zlib state parameters
     z_stream zs;
     zs.zalloc = Z_NULL;
@@ -104,7 +114,7 @@ static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode
     do {
         if (op == OP_ENCODE) {
             result = deflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
-            
+
             if (result == Z_STREAM_ERROR) {
                 deflateEnd(&zs);
                 LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
@@ -113,13 +123,13 @@ static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode
         }
         else {
             result = inflate(&zs, Z_FINISH); //Z_FINISH since all input data is available
-            
+
             if (result == Z_STREAM_ERROR) {
                 inflateEnd(&zs);
                 LH_ERROR(NULL,"zlib reported Z_STREAM_ERROR\n");
                 //TODO: user should free the buffer
             }
-        }            
+        }
 
         ssize_t outsize = zs.next_out - *obuf; // current size of data in the buffer
         if (result == Z_BUF_ERROR) {

@@ -1,3 +1,13 @@
+/*
+ Authors:
+ Copyright 2012-2015 by Eduard Broese <ed.broese@gmx.de>
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version
+ 2 of the License, or (at your option) any later version.
+*/
+
 #define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +50,7 @@ struct lh_dirwalk {
     ssize_t         name_max;   // max size of file name, obtained from pathconf
     ssize_t         path_max;   // max size of path, obtained from pathconf
 
-    int             level;      // current subdirectory level 
+    int             level;      // current subdirectory level
     int             flags;      // flags supplied to lh_dirwalk_create
 
     lh_dwdir      * current;    // currently processed directory
@@ -151,7 +161,7 @@ static int lh_dirwalk_cmp(const void *pa, const void *pb, void *priv) {
         if ( S_ISDIR(a->st->st_mode) > S_ISDIR(b->st->st_mode) ) return -1;
         if ( S_ISDIR(a->st->st_mode) < S_ISDIR(b->st->st_mode) ) return 1;
     }
-    
+
     // sort files alphabetically
     assert(a->name);
     assert(b->name);
@@ -170,7 +180,7 @@ static int lh_dirwalk_cmp(const void *pa, const void *pb) {
     // sort directories first
     if ( S_ISDIR(a->st->st_mode) > S_ISDIR(b->st->st_mode) ) return -1;
     if ( S_ISDIR(a->st->st_mode) < S_ISDIR(b->st->st_mode) ) return 1;
-    
+
     // sort files alphabetically
     assert(a->name);
     assert(b->name);
@@ -192,7 +202,7 @@ static int lh_dirwalk_readdir(lh_dirwalk *dw) {
     struct dirent *dep, *de;
     de = malloc(offsetof(struct dirent, d_name)+dw->name_max+1);
     lh_clear_ptr(de);
-    
+
     char *path = malloc(dw->path_max+1);
     ssize_t npos = sprintf(path, "%s/", ds->path);
 
@@ -203,12 +213,12 @@ static int lh_dirwalk_readdir(lh_dirwalk *dw) {
         if (!dep) break; // end of directory reached
 
         const char *name = de->d_name;
-        
+
         // keep the '.' and '..' entries if the flag requires
         if (!(dw->flags&LH_DW_REPORT_DOTDIR))
             if (name[0]=='.' && ( name[1]==0 || (name[1]=='.' && name[2]==0) ) )
                 continue;
-        
+
         // allocate a new entry in the file list
         lh_dwfile * newfile = lh_arr_new(ds->files, ds->nfiles, LH_DIR_ALLOCGRAN);
 
@@ -217,7 +227,7 @@ static int lh_dirwalk_readdir(lh_dirwalk *dw) {
         // stat it
         assert(npos+strlen(name) <= dw->path_max);
         sprintf(path+npos, "%s", name);
-        
+
         int res;
         lh_alloc_obj(newfile->st);
         if (dw->flags&LH_DW_FOLLOW_SYMLINK)
@@ -278,7 +288,7 @@ int lh_dirwalk_next_p(lh_dirwalk *dw, lh_dwres_p *dr) {
             }
             free(ds);
             ds = dw->current;
-            
+
             if (dw->flags & LH_DW_REPORT_DIREND) {
                 // report a DIREND event to the user
                 dr->type = LH_DW_DIREND;
