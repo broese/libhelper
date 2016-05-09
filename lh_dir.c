@@ -398,3 +398,47 @@ int lh_dirwalk_next(lh_dirwalk *dw, lh_dwres *dr) {
     }
     return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+int lh_create_dir(const char *path, int mode) {
+    struct stat st;
+    if (!stat(path, &st)) {
+        if (S_ISDIR(st.st_mode))
+            return 0; // directory exists, success
+        else
+            return ENOTDIR; // path exists, but is not a directory
+    }
+
+    if (errno != ENOENT) {
+        printf("stat on path %s failed: %d %s\n", path, errno, strerror(errno));
+        return errno;
+    }
+
+    const char * rslash = rindex(path, '/');
+    if (rslash) {
+        // get the parent directory name
+        ssize_t plen = rslash-path;
+        char buf[PATH_MAX];
+        memmove(buf, path, plen);
+        buf[plen] = 0;
+
+        // create parent directory
+        int res = lh_create_dir(buf, mode);
+        if (res) return res;
+    }
+
+    int res = mkdir(path, mode);
+    if (res)
+        printf("Failed to create directory %s : %s\n", path, strerror(errno));
+    return res;
+}
+
+
+
+
+
+
+
+
+

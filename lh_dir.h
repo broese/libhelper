@@ -86,3 +86,5 @@ int lh_dirwalk_next(lh_dirwalk *dw, lh_dwres *dr);
 //TODO: ignore hidden files flag
 //TODO/CLARIFY: handle files without read access
 //TODO: external filter
+
+int lh_create_dir(const char *path, int mode);
