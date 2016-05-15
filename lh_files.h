@@ -34,6 +34,10 @@ off_t lh_filesize(int fd);
 off_t lh_filesize_path(const char * path);
 #define lh_filesize_fp(fp) lh_filesize(fileno(fp))
 
+int lh_path_exists(const char * path);
+int lh_path_isfile(const char *path);
+int lh_path_isdir(const char *path);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @name Opening files
 

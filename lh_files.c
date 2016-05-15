@@ -74,6 +74,28 @@ off_t lh_filesize_path(const char * path) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+int lh_path_exists(const char *path) {
+    struct stat st;
+    if (stat(path, &st)) return 0;
+    return 1;
+}
+
+int lh_path_isfile(const char *path) {
+    struct stat st;
+    if (stat(path, &st)) return 0;
+    if ( (st.st_mode & S_IFMT) == S_IFREG ) return 1;
+    return 0;
+}
+
+int lh_path_isdir(const char *path) {
+    struct stat st;
+    if (stat(path, &st)) return 0;
+    if ( (st.st_mode & S_IFMT) == S_IFDIR ) return 1;
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 static int lh_open_file(const char *path, off_t *sizep, int flags, const char *smode) {
 #ifdef O_LARGEFILE
     flags |= O_LARGEFILE;
