@@ -245,8 +245,6 @@ lhimage * import_png(unsigned char *data, ssize_t length) {
     int color_type = png_get_color_type(png, pngi);
     int bit_depth = png_get_bit_depth(png, pngi);
 
-    printf("W:%d H:%d C:%d D:%d\n",width, height, color_type, bit_depth);
-
     switch (color_type) {
         case PNG_COLOR_TYPE_PALETTE:
             png_set_palette_to_rgb(png);
