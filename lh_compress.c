@@ -101,7 +101,7 @@ static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode
     // check if we need to pre-allocate the output buffer
     if (*olen-offset <= 0) {
         if (alloc_mode == AM_STATIC) {
-            LH_ERROR(NULL,"unsufficient output buffer size %zd\n", *olen);
+            LH_ERROR(NULL,"insufficient output buffer size %zd\n", *olen);
         }
         else {
             lh_arr_allocate(*obuf, *olen, LH_COMPRESS_ALLOCGRAN, LH_COMPRESS_ALLOCGRAN+offset);
@@ -134,12 +134,15 @@ static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode
         ssize_t outsize = zs.next_out - *obuf; // current size of data in the buffer
         if (result == Z_BUF_ERROR) {
             if (alloc_mode == AM_STATIC)
-                LH_ERROR(NULL,"unsufficient output buffer size %zd\n", *olen);
+                LH_ERROR(NULL,"insufficient output buffer size %zd\n", *olen);
 
             lh_arr_add(*obuf, *olen, LH_COMPRESS_ALLOCGRAN, LH_COMPRESS_ALLOCGRAN);
             zs.next_out = *obuf + outsize;
             zs.avail_out = *olen - outsize;
         }
+
+        if (alloc_mode == AM_STATIC && outsize >= *olen) break;
+
     } while(result != Z_STREAM_END);
 
     if (op == OP_ENCODE)
