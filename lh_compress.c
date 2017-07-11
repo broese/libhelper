@@ -133,6 +133,12 @@ static uint8_t * zlib_internal(int op, int format, int complevel, int alloc_mode
 
         ssize_t outsize = zs.next_out - *obuf; // current size of data in the buffer
         if (result == Z_BUF_ERROR) {
+            if (zs.avail_in==0 && zs.avail_out==0) {
+                printf("Warning: corrupt or incomplete zlib data, in %zd, out %zd bytes\n",
+                       ilen, zs.next_out-*obuf+offset);
+                break;
+            }
+
             if (alloc_mode == AM_STATIC)
                 LH_ERROR(NULL,"insufficient output buffer size %zd\n", *olen);
 
