@@ -47,4 +47,4 @@ void resize_image(lhimage *img, int32_t newwidth, int32_t newheight,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#define IMGDOT(img,x,y) img->data[(x)+img->width*(y)]
+#define IMGDOT(img,x,y) img->data[(x)+img->stride*(y)]
