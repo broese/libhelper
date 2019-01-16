@@ -128,9 +128,7 @@
 #define lh_create_num(type,name,num)    type * lh_alloc_num(name,num)
 #define lh_alloc_obj(ptr)               lh_alloc_num(ptr,1)
 #define lh_alloc_buf(ptr,size)          lh_alloc_num(ptr,size)
-#define lh_alloc_num(ptr,num)                   \
-    ptr = malloc((num)*sizeof(*(ptr)));         \
-    lh_clear_num((ptr),(num));
+#define lh_alloc_num(ptr,num)           ptr = calloc((num), sizeof(*(ptr)));
 
 ////////////////////////////////////////////////////////////////////////////////
 
